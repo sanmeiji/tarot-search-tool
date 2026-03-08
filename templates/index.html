@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>塔罗牌检索</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ─── Scrollbar ─── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0d0d1a; }
+    ::-webkit-scrollbar-thumb { background: #2a2a45; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a3a60; }
+    * { scrollbar-width: thin; scrollbar-color: #2a2a45 #0d0d1a; }
+
+    body {
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #0d0d1a;
+      color: #e8e0d5;
+      min-height: 100vh;
+    }
+
+    /* ─── Sidebar ─── */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 100vh;
+      width: 280px;
+      background: #0a0a18;
+      border-right: 1px solid #2a2a45;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      padding: 2rem 1.4rem 1.5rem;
+      gap: 1.4rem;
+      overflow-y: auto;
+      transition: transform 0.25s ease, left 0.25s ease, right 0.25s ease;
+    }
+
+    .sidebar.collapsed { transform: translateX(-280px); }
+
+    /* Right-side variant */
+    .sidebar.right {
+      left: auto;
+      right: 0;
+      border-right: none;
+      border-left: 1px solid #2a2a45;
+      transform: none;
+    }
+    .sidebar.right.collapsed { transform: translateX(280px); }
+
+    .sidebar-title {
+      font-family: "Noto Serif SC", "Source Han Serif CN", serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #c9a96e;
+      letter-spacing: 0.2em;
+      text-shadow: 0 0 20px rgba(201,169,110,0.35);
+      line-height: 1.3;
+      text-align: center;
+    }
+
+    /* Search */
+    .search-box { position: relative; }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.75rem 2.5rem 0.75rem 1rem;
+      background: #13132a;
+      border: 1px solid #3a3a5c;
+      border-radius: 8px;
+      color: #e8e0d5;
+      font-size: 0.9rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-box input:focus { border-color: #c9a96e; }
+    .search-box input::placeholder { color: #4a4a6a; }
+
+    .clear-btn {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #4a4a6a;
+      cursor: pointer;
+      font-size: 1rem;
+      display: none;
+    }
+    .clear-btn.visible { display: block; }
+
+    /* Filters */
+    .filter-label {
+      font-size: 0.68rem;
+      color: #4a4a6a;
+      letter-spacing: 0.15em;
+      text-align: center;
+      margin-bottom: 0.3rem;
+    }
+
+    .filters {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .filter-btn {
+      width: 100%;
+      padding: 0.55rem 0;
+      border: none;
+      border-bottom: 1px solid #1e1e38;
+      background: transparent;
+      color: #9a9ab8;
+      cursor: pointer;
+      font-size: 0.92rem;
+      font-family: inherit;
+      text-align: center;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .filter-btn:first-child { border-top: 1px solid #1e1e38; }
+
+    .filter-btn:hover {
+      background: rgba(201,169,110,0.05);
+      color: #c0a870;
+    }
+
+    .filter-btn.active {
+      color: #c9a96e;
+      background: rgba(201,169,110,0.08);
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      font-size: 0.88rem;
+      color: #7a7a9a;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* ─── Toggle button ─── */
+    .sidebar-toggle {
+      position: fixed;
+      top: 1.2rem;
+      left: 280px;
+      z-index: 60;
+      width: 22px;
+      height: 48px;
+      background: #1a1a30;
+      border: 1px solid #3a3a5c;
+      border-left: none;
+      border-radius: 0 8px 8px 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #c9a96e;
+      font-size: 0.9rem;
+      transition: left 0.25s ease, right 0.25s ease, color 0.15s, background 0.15s;
+      box-shadow: 2px 0 8px rgba(0,0,0,0.3);
+    }
+
+    .sidebar-toggle:hover { background: #222240; color: #e8c080; }
+    .sidebar-toggle.collapsed { left: 0; border-left: 1px solid #3a3a5c; border-right: none; border-radius: 8px 0 0 8px; box-shadow: -2px 0 8px rgba(0,0,0,0.3); }
+
+    /* Right-side toggle */
+    .sidebar-toggle.right {
+      left: auto;
+      right: 280px;
+      border-left: 1px solid #3a3a5c;
+      border-right: none;
+      border-radius: 8px 0 0 8px;
+      box-shadow: -2px 0 8px rgba(0,0,0,0.3);
+    }
+    .sidebar-toggle.right.collapsed { right: 0; border-left: none; border-right: 1px solid #3a3a5c; border-radius: 0 8px 8px 0; box-shadow: 2px 0 8px rgba(0,0,0,0.3); }
+
+    .pos-btn {
+      background: none;
+      border: none;
+      color: #7a7a9a;
+      cursor: pointer;
+      font-size: 0.88rem;
+      padding: 0;
+      font-family: inherit;
+      transition: color 0.15s;
+    }
+    .pos-btn:hover { color: #c9a96e; }
+
+    .sidebar-link {
+      color: #7a7a9a;
+      text-decoration: none;
+      font-size: 0.88rem;
+      transition: color 0.15s;
+    }
+    .sidebar-link:hover { color: #c9a96e; }
+
+    /* ─── Main content ─── */
+    .main {
+      margin-left: 280px;
+      margin-right: 0;
+      transition: margin-left 0.25s ease, margin-right 0.25s ease;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    .main.expanded { margin-left: 0; }
+    .main.right-sidebar { margin-left: 0; margin-right: 280px; }
+    .main.right-sidebar.expanded { margin-right: 0; }
+
+    .results-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .meta-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, transparent, #3a3a55);
+    }
+
+    .meta-line:last-child {
+      background: linear-gradient(to left, transparent, #3a3a55);
+    }
+
+    .meta-count {
+      font-size: 0.82rem;
+      color: #6a6a8a;
+      white-space: nowrap;
+      letter-spacing: 0.05em;
+    }
+
+    /* ─── Grid ─── */
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.2rem;
+    }
+
+    /* ─── Card ─── */
+    .card {
+      background: #13132a;
+      border: 1px solid #2a2a45;
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .card:hover { border-color: #c9a96e; transform: translateY(-3px); }
+
+    .card-body { padding: 1.2rem; }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.9rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .card-thumb {
+      width: 56px;
+      height: 96px;
+      object-fit: cover;
+      border-radius: 4px;
+      flex-shrink: 0;
+      background: #1a1a30;
+    }
+
+    .card-meta { flex: 1; min-width: 0; }
+
+    .card-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #c9a96e;
+      letter-spacing: 0.05em;
+      font-family: "Noto Serif SC", "Source Han Serif CN", serif;
+    }
+
+    .card-name-en {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #8a8aaa;
+      margin-top: 0.15rem;
+      font-family: "Noto Serif SC", Georgia, serif;
+    }
+
+    .meaning-block { margin-top: 0.55rem; }
+
+    .meaning-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .meaning-label::before {
+      content: "";
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .upright .meaning-label { color: #70c090; }
+    .upright .meaning-label::before { background: #70c090; }
+    .reversed .meaning-label { color: #c07070; }
+    .reversed .meaning-label::before { background: #c07070; }
+
+    .meaning-text {
+      font-size: 0.82rem;
+      color: #9a9288;
+      line-height: 1.55;
+    }
+
+    /* ─── Modal ─── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(5,5,15,0.85);
+      z-index: 100;
+      overflow-y: auto;
+      padding: 2rem 1rem;
+    }
+
+    .modal-overlay.open { display: flex; align-items: flex-start; justify-content: center; }
+
+    .modal {
+      background: #13132a;
+      border: 1px solid #3a3a5c;
+      border-radius: 14px;
+      width: clamp(1000px, 90vw, 90vw);
+      position: relative;
+      overflow: hidden;
+      animation: modalIn 0.18s ease;
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem; right: 1.2rem;
+      background: none;
+      border: none;
+      color: #8a8aaa;
+      font-size: 1.4rem;
+      cursor: pointer;
+      transition: color 0.15s;
+      z-index: 2;
+    }
+    .modal-close:hover { color: #c9a96e; }
+
+    .modal-inner { display: flex; }
+
+    .modal-img-col {
+      flex: 0 0 280px;
+      background: #0d0d1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem 1rem;
+      gap: 1.4rem;
+    }
+
+    .modal-card-name-area {
+      text-align: center;
+      padding: 0 0.5rem;
+      width: 100%;
+    }
+
+    .modal-card-name-area::after {
+      content: "";
+      display: block;
+      margin: 1rem auto 0;
+      height: 1px;
+      width: 80%;
+      background: linear-gradient(to right, transparent, #c9a96e 50%, transparent);
+      opacity: 0.4;
+    }
+
+    .modal-img {
+      width: 240px;
+      border-radius: 6px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    }
+
+    .modal-content { flex: 1; padding: 1.8rem 1.8rem 1.8rem 1.4rem; min-width: 0; overflow-y: auto; max-height: 90vh; }
+
+    .modal-name {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #c9a96e;
+      letter-spacing: 0.08em;
+      font-family: "Noto Serif SC", "Source Han Serif CN", serif;
+      text-align: center;
+    }
+
+    .modal-name-en {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #8a8aaa;
+      margin-top: 0.2rem;
+      font-family: "Noto Serif SC", Georgia, serif;
+      text-align: center;
+    }
+
+    /* Mobile-only: combined keywords shown above descriptions */
+    .modal-kw-mobile { display: none; }
+
+    /* Two-column body */
+    .modal-body {
+      display: flex;
+      gap: 0;
+      margin-top: 1rem;
+    }
+
+    .modal-col {
+      flex: 1;
+      padding: 1rem 1rem;
+      min-width: 0;
+    }
+
+    .modal-col.upright { 
+      border-right: 1.5px solid #1e1e3a; 
+      /* padding-right: 1.5rem; */
+    }
+    .modal-col.reversed {
+      /* flex: 1.2;          比正位略宽，改数字调比例 */
+      /* padding: 1.5rem 1rem; 单独的内边距 */
+      padding-left: 1.05rem;
+      /* margin-left: 1.1rem; */
+    }
+
+    .modal-col-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .modal-col-label-line {
+      flex: 1;
+      height: 1px;
+    }
+
+    .modal-col.upright .modal-col-label { color: #70c090; }
+    .modal-col.upright .modal-col-label-line {
+      background: linear-gradient(to right, transparent, #70c090);
+    }
+    .modal-col.upright .modal-col-label-line:last-child {
+      background: linear-gradient(to left, transparent, #70c090);
+    }
+    .modal-col.reversed .modal-col-label { color: #c07070; }
+    .modal-col.reversed .modal-col-label-line {
+      background: linear-gradient(to right, transparent, #c07070);
+    }
+    .modal-col.reversed .modal-col-label-line:last-child {
+      background: linear-gradient(to left, transparent, #c07070);
+    }
+
+    .modal-col-desc {
+      font-size: 0.85rem;
+      color: #c0b8b0;
+      line-height: 1.8;
+    }
+
+    .modal-col-desc p { margin-bottom: 0.7rem; }
+    .modal-col-desc p:last-child { margin-bottom: 0; }
+
+    .modal-col-kw {
+      margin-top: 0.8rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.28rem;
+      justify-content: center;
+    }
+
+    .modal-kw-tag {
+      font-size: 0.72rem;
+      padding: 0.18rem 0.5rem;
+      border-radius: 8px;
+      background: rgba(201,169,110,0.15);
+      color: #c8a860;
+      border: 1px solid rgba(201,169,110,0.35);
+    }
+
+    .modal-sources {
+      margin-top: 1.2rem;
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    .src-link {
+      font-size: 0.75rem;
+      color: #4a6080;
+      text-decoration: none;
+      padding: 0.2rem 0.6rem;
+      border: 1px solid #2a3050;
+      border-radius: 10px;
+      transition: all 0.15s;
+    }
+    .src-link:hover { border-color: #c9a96e; color: #c9a96e; }
+
+    .empty-state {
+      margin: 4rem auto;
+      text-align: center;
+      color: #3a3a5a;
+    }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+
+    /* ─── Mobile elements (hidden on desktop) ─── */
+    .mobile-header, .mobile-footer {
+      display: none;
+    }
+
+    @media (max-width: 700px) {
+      .sidebar, .sidebar-toggle { display: none; }
+
+      .main {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding: 0 1rem 3rem;
+      }
+
+      .mobile-header {
+        display: flex;
+        flex-direction: column;
+        padding: 1.2rem 1rem 0.8rem;
+        gap: 0.7rem;
+        border-bottom: 1px solid #2a2a45;
+        margin-bottom: 1rem;
+      }
+
+      .mobile-top-row {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+      }
+
+      .mobile-title {
+        font-family: "Noto Serif SC", "Source Han Serif CN", serif;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #c9a96e;
+        letter-spacing: 0.1em;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      .mobile-filters {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        flex: 1;
+        flex-wrap: wrap;
+      }
+
+      .mobile-filter-btn {
+        background: none;
+        border: none;
+        color: #5a5a7a;
+        font-size: 0.8rem;
+        font-family: inherit;
+        cursor: pointer;
+        padding: 0 0.3rem;
+        transition: color 0.15s;
+        white-space: nowrap;
+      }
+      .mobile-filter-btn + .mobile-filter-btn::before {
+        content: "·";
+        color: #3a3a5a;
+        margin-right: 0.3rem;
+        pointer-events: none;
+      }
+      .mobile-filter-btn.active { color: #c9a96e; font-weight: 600; }
+      .mobile-filter-btn:hover { color: #a09060; }
+
+      .mobile-search {
+        position: relative;
+        width: 100%;
+        max-width: 480px;
+      }
+
+      .mobile-search input {
+        width: 100%;
+        padding: 0.75rem 2.5rem 0.75rem 1rem;
+        background: #13132a;
+        border: 1px solid #3a3a5c;
+        border-radius: 8px;
+        color: #e8e0d5;
+        font-size: 1rem;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      .mobile-search input:focus { border-color: #c9a96e; }
+      .mobile-search input::placeholder { color: #4a4a6a; }
+
+      .mobile-clear {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #4a4a6a;
+        cursor: pointer;
+        font-size: 1rem;
+        display: none;
+      }
+      .mobile-clear.visible { display: block; }
+
+      .results-meta { display: none; }
+
+      .mobile-footer {
+        text-align: center;
+        padding: 2rem 0 1rem;
+        font-size: 0.8rem;
+      }
+      .mobile-footer a {
+        color: #4a4a6a;
+        text-decoration: none;
+        transition: color 0.15s;
+      }
+      .mobile-footer a:hover { color: #c9a96e; }
+
+      .results-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .modal-inner { flex-direction: column; }
+      .modal-img-col { flex: none; padding: 1.2rem 1rem 0; justify-content: flex-start; flex-direction: row; gap: 1rem; align-items: center; }
+      .modal-img { width: 80px; }
+      .modal-content { padding: 0.8rem 1rem 1.2rem; max-height: none; }
+
+      /* Mobile modal layout: keywords first, then descriptions */
+      .modal-kw-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.8rem 0;
+        margin-top: 0.6rem;
+      }
+      .modal-kw-row { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
+      .modal-kw-row-label {
+        font-size: 0.68rem;
+        margin-right: 0.3rem;
+        flex-shrink: 0;
+      }
+      .modal-kw-row-label.up { color: #70c090; }
+      .modal-kw-row-label.rev { color: #c07070; }
+
+      .modal-body { flex-direction: column; border-top: none; }
+      .modal-col.upright { border-right: none; padding: 0.8rem 0 0; }
+      .modal-col.reversed { padding: 0.8rem 0 0; }
+      .modal-col-kw { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Mobile header -->
+<header class="mobile-header">
+  <div class="mobile-top-row">
+    <div class="mobile-title">塔罗牌检索</div>
+    <div class="mobile-filters" id="mobileFilters">
+      <button class="mobile-filter-btn active" data-filter="all">全部</button>
+      <button class="mobile-filter-btn" data-filter="major">大阿卡那</button>
+      <button class="mobile-filter-btn" data-filter="圣杯">圣杯</button>
+      <button class="mobile-filter-btn" data-filter="权杖">权杖</button>
+      <button class="mobile-filter-btn" data-filter="宝剑">宝剑</button>
+      <button class="mobile-filter-btn" data-filter="星币">星币</button>
+    </div>
+  </div>
+  <div class="mobile-search">
+    <input type="text" id="mobileSearchInput" placeholder="搜索牌名…" autocomplete="off">
+    <button class="mobile-clear" id="mobileClearBtn">✕</button>
+  </div>
+</header>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-title">塔罗牌检索</div>
+
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="搜索牌名…" autocomplete="off">
+    <button class="clear-btn" id="clearBtn">✕</button>
+  </div>
+
+  <div>
+    <div class="filter-label">牌组</div>
+    <div class="filters" id="filters">
+      <button class="filter-btn active" data-filter="all">全部</button>
+      <button class="filter-btn" data-filter="major">大阿卡那</button>
+      <button class="filter-btn" data-filter="圣杯">小阿卡那·圣杯</button>
+      <button class="filter-btn" data-filter="权杖">小阿卡那·权杖</button>
+      <button class="filter-btn" data-filter="宝剑">小阿卡那·宝剑</button>
+      <button class="filter-btn" data-filter="星币">小阿卡那·星币</button>
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <a class="sidebar-link" href="/sources">数据来源 ↗</a>
+    <button class="pos-btn" id="posBtn">⇄ 移到右侧</button>
+  </div>
+</aside>
+
+<!-- Toggle button -->
+<button class="sidebar-toggle" id="sidebarToggle" title="折叠侧边栏">‹</button>
+
+<!-- Main -->
+<main class="main" id="main">
+  <div id="resultsMeta" class="results-meta"></div>
+  <div id="emptyState" class="empty-state" style="display:none">
+    <div class="icon">🔮</div>
+    <p>未找到匹配的牌</p>
+  </div>
+  <div id="resultsGrid" class="results-grid"></div>
+  <footer class="mobile-footer">
+    <a href="/sources">数据来源 ↗</a>
+  </footer>
+</main>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-inner">
+      <div class="modal-img-col">
+        <div id="modalCardName" class="modal-card-name-area"></div>
+        <img class="modal-img" id="modalImg" src="" alt="">
+      </div>
+      <div class="modal-content" id="modalContent"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const IMG_BASE = "/static/images";
+  const NUM_MAP = {"A":"01","2":"02","3":"03","4":"04","5":"05","6":"06","7":"07","8":"08","9":"09","10":"10","侍从":"11","骑士":"12","皇后":"13","国王":"14"};
+  const SUIT_MAP = {"圣杯":"c","权杖":"w","宝剑":"s","星币":"p"};
+
+  // ─── Sidebar toggle & position ───
+  const sidebar   = document.getElementById('sidebar');
+  const mainEl    = document.getElementById('main');
+  const toggleBtn = document.getElementById('sidebarToggle');
+  const posBtn    = document.getElementById('posBtn');
+  let sidebarOpen  = true;
+  let sidebarRight = false;
+
+  function updateToggleIcon() {
+    if (sidebarRight) {
+      toggleBtn.textContent = sidebarOpen ? '›' : '‹';
+    } else {
+      toggleBtn.textContent = sidebarOpen ? '‹' : '›';
+    }
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    sidebarOpen = !sidebarOpen;
+    sidebar.classList.toggle('collapsed', !sidebarOpen);
+    toggleBtn.classList.toggle('collapsed', !sidebarOpen);
+    if (sidebarRight) {
+      mainEl.classList.toggle('expanded', !sidebarOpen);
+    } else {
+      mainEl.classList.toggle('expanded', !sidebarOpen);
+    }
+    updateToggleIcon();
+  });
+
+  posBtn.addEventListener('click', () => {
+    sidebarRight = !sidebarRight;
+    sidebar.classList.toggle('right', sidebarRight);
+    toggleBtn.classList.toggle('right', sidebarRight);
+    mainEl.classList.toggle('right-sidebar', sidebarRight);
+    posBtn.textContent = sidebarRight ? '⇄ 移到左侧' : '⇄ 移到右侧';
+    // reset collapsed state relative to new side
+    sidebar.classList.remove('collapsed');
+    toggleBtn.classList.remove('collapsed');
+    mainEl.classList.remove('expanded');
+    sidebarOpen = true;
+    updateToggleIcon();
+  });
+
+  // ─── Image URL ───
+  function getImageUrl(card) {
+    if (card.arcana === 'major') {
+      return `${IMG_BASE}/m${String(card.id - 1).padStart(2,'0')}.jpg`;
+    }
+    return `${IMG_BASE}/${SUIT_MAP[card.suit]||''}${NUM_MAP[card.number]||''}.jpg`;
+  }
+
+  function displayName(card) {
+    return card.arcana === 'major' ? `${card.number}·${card.name}` : card.name;
+  }
+
+  // ─── Card render ───
+  function renderCard(card) {
+    return `
+      <div class="card" onclick="openModal(${card.id})">
+        <div class="card-body">
+          <div class="card-header">
+            <img class="card-thumb" src="${getImageUrl(card)}" alt="${card.name}" loading="lazy">
+            <div class="card-meta">
+              <div class="card-name">${displayName(card)}</div>
+              <div class="card-name-en">${card.name_en}</div>
+            </div>
+          </div>
+          <div class="meaning-block upright">
+            <div class="meaning-label">正位</div>
+            <div class="meaning-text">${card.keywords_upright || ''}</div>
+          </div>
+          <div class="meaning-block reversed">
+            <div class="meaning-label">逆位</div>
+            <div class="meaning-text">${card.keywords_reversed || ''}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // ─── Modal ───
+  let allCards = [];
+
+  function kwTags(str) {
+    if (!str) return '';
+    return str.split(/[、，,]/).map(k => k.trim()).filter(Boolean)
+      .map(k => `<span class="modal-kw-tag">${k}</span>`).join('');
+  }
+
+  function openModal(cardId) {
+    const card = allCards.find(c => c.id === cardId);
+    if (!card) return;
+
+    document.getElementById('modalImg').src = getImageUrl(card);
+    document.getElementById('modalImg').alt = card.name;
+    document.getElementById('modalCardName').innerHTML = `
+      <div class="modal-name">${displayName(card)}</div>
+      <div class="modal-name-en">${card.name_en}</div>
+    `;
+
+    function fmtDesc(raw) {
+      if (!raw) return '';
+      return raw.split('\n').filter(l => l.trim())
+        .map(l => `<p>${l}</p>`).join('');
+    }
+    const descUp  = fmtDesc(card.description_upright)  || card.keywords_upright  || '';
+    const descRev = fmtDesc(card.description_reversed) || card.keywords_reversed || '';
+    const kwUp    = card.keywords_upright  || '';
+    const kwRev   = card.keywords_reversed || '';
+
+    const sources = (card.source_upright || card.source_reversed) ? `
+      <div class="modal-sources">
+        ${card.source_upright  ? `<a class="src-link" href="${card.source_upright}"  target="_blank" rel="noopener">正位参考 ↗</a>` : ''}
+        ${card.source_reversed ? `<a class="src-link" href="${card.source_reversed}" target="_blank" rel="noopener">逆位参考 ↗</a>` : ''}
+      </div>` : '';
+
+    document.getElementById('modalContent').innerHTML = `
+      <div class="modal-kw-mobile">
+        <div class="modal-kw-row">
+          <span class="modal-kw-row-label up">正位·关键词</span>
+          ${kwTags(kwUp)}
+        </div>
+        <div class="modal-kw-row">
+          <span class="modal-kw-row-label rev">逆位·关键词</span>
+          ${kwTags(kwRev)}
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="modal-col upright">
+          <div class="modal-col-label">
+            <span class="modal-col-label-line"></span>正位<span class="modal-col-label-line"></span>
+          </div>
+          <div class="modal-col-kw" style="margin-top:0;margin-bottom:0.8rem">${kwTags(kwUp)}</div>
+          <div class="modal-col-desc">${descUp}</div>
+        </div>
+        <div class="modal-col reversed">
+          <div class="modal-col-label">
+            <span class="modal-col-label-line"></span>逆位<span class="modal-col-label-line"></span>
+          </div>
+          <div class="modal-col-kw" style="margin-top:0;margin-bottom:0.8rem">${kwTags(kwRev)}</div>
+          <div class="modal-col-desc">${descRev}</div>
+        </div>
+      </div>
+      ${sources}
+    `;
+
+    document.getElementById('modalOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function handleOverlayClick(e) {
+    if (e.target === document.getElementById('modalOverlay')) closeModal();
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  // ─── Search & filter ───
+  const input        = document.getElementById('searchInput');
+  const clearBtn     = document.getElementById('clearBtn');
+  const mobileInput  = document.getElementById('mobileSearchInput');
+  const mobileClear  = document.getElementById('mobileClearBtn');
+  const resultsGrid = document.getElementById('resultsGrid');
+  const resultsMeta = document.getElementById('resultsMeta');
+  const emptyState  = document.getElementById('emptyState');
+  let currentFilter = 'all';
+  let debounceTimer = null;
+
+  async function loadAll() {
+    const res = await fetch('/api/all');
+    allCards = await res.json();
+    return allCards;
+  }
+
+  function filterCards(cards) {
+    if (currentFilter === 'all') return cards;
+    if (currentFilter === 'major') return cards.filter(c => c.arcana === 'major');
+    return cards.filter(c => c.suit === currentFilter);
+  }
+
+  function showCards(cards) {
+    resultsMeta.innerHTML = cards.length > 0
+      ? `<span class="meta-line"></span><span class="meta-count">✦ ${cards.length} 张 ✦</span><span class="meta-line"></span>`
+      : '';
+    resultsGrid.innerHTML = cards.map(renderCard).join('');
+    emptyState.style.display = cards.length === 0 ? 'block' : 'none';
+  }
+
+  async function doSearch(query) {
+    if (!query.trim()) {
+      showCards(filterCards(allCards));
+      return;
+    }
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+    showCards(filterCards(await res.json()));
+  }
+
+  function showFilter(filter) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.filter === filter));
+    doSearch(input.value);
+  }
+
+  function syncSearch(val) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => doSearch(val), 180);
+  }
+
+  input.addEventListener('input', () => {
+    clearBtn.classList.toggle('visible', input.value.length > 0);
+    syncSearch(input.value);
+  });
+
+  clearBtn.addEventListener('click', () => {
+    input.value = '';
+    clearBtn.classList.remove('visible');
+    doSearch('');
+    input.focus();
+  });
+
+  mobileInput.addEventListener('input', () => {
+    mobileClear.classList.toggle('visible', mobileInput.value.length > 0);
+    syncSearch(mobileInput.value);
+  });
+
+  mobileClear.addEventListener('click', () => {
+    mobileInput.value = '';
+    mobileClear.classList.remove('visible');
+    doSearch('');
+    mobileInput.focus();
+  });
+
+  document.getElementById('filters').addEventListener('click', e => {
+    const btn = e.target.closest('.filter-btn');
+    if (btn) showFilter(btn.dataset.filter);
+  });
+
+  document.getElementById('mobileFilters').addEventListener('click', e => {
+    const btn = e.target.closest('.mobile-filter-btn');
+    if (!btn) return;
+    currentFilter = btn.dataset.filter;
+    document.querySelectorAll('.mobile-filter-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.filter === currentFilter));
+    // also sync desktop filters
+    document.querySelectorAll('.filter-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.filter === currentFilter));
+    doSearch(mobileInput.value);
+  });
+
+  loadAll().then(() => showCards(allCards));
+</script>
+</body>
+</html>

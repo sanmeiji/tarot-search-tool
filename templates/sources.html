@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数据来源 · 塔罗牌检索</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Noto Serif SC", "Source Han Serif CN", serif;
+      background: #0d0d1a;
+      color: #e8e0d5;
+      min-height: 100vh;
+    }
+
+    header {
+      text-align: center;
+      padding: 2.5rem 1rem 1.5rem;
+      border-bottom: 1px solid #2a2a45;
+    }
+
+    header h1 { font-size: 1.6rem; color: #c9a96e; letter-spacing: 0.2em; }
+    header p { margin-top: 0.4rem; color: #5a5a7a; font-size: 0.85rem; }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 0.8rem;
+      color: #5a5a7a;
+      text-decoration: none;
+      font-size: 0.82rem;
+      transition: color 0.15s;
+    }
+    .back-link:hover { color: #c9a96e; }
+
+    .source-intro {
+      max-width: 760px;
+      margin: 2rem auto;
+      padding: 1.2rem 1.5rem;
+      background: #13132a;
+      border: 1px solid #2a2a45;
+      border-radius: 10px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .source-intro h2 {
+      font-size: 1rem;
+      color: #c9a96e;
+      margin-bottom: 0.6rem;
+      letter-spacing: 0.05em;
+    }
+
+    .source-intro p {
+      font-size: 0.85rem;
+      color: #8a8298;
+      line-height: 1.7;
+    }
+
+    .source-intro a {
+      color: #7090c0;
+      text-decoration: none;
+    }
+
+    .source-intro a:hover { color: #c9a96e; }
+
+    .content {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    .group-title {
+      font-size: 0.8rem;
+      color: #4a4a6a;
+      letter-spacing: 0.1em;
+      margin: 1.8rem 0 0.8rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid #1e1e3a;
+    }
+
+    .card-list { display: flex; flex-direction: column; gap: 0.4rem; }
+
+    .card-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.5rem 0.8rem;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+
+    .card-row:hover { background: #16162a; }
+
+    .card-row-name {
+      flex: 0 0 120px;
+      font-size: 0.88rem;
+      color: #c9a96e;
+    }
+
+    .card-row-en {
+      flex: 0 0 160px;
+      font-size: 0.75rem;
+      color: #4a4a6a;
+    }
+
+    .card-row-links {
+      display: flex;
+      gap: 0.8rem;
+    }
+
+    .src-link {
+      font-size: 0.75rem;
+      color: #4a6080;
+      text-decoration: none;
+      padding: 0.15rem 0.5rem;
+      border: 1px solid #2a3050;
+      border-radius: 10px;
+      transition: all 0.15s;
+    }
+
+    .src-link:hover {
+      border-color: #c9a96e;
+      color: #c9a96e;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>数据来源</h1>
+  <p>所有牌义数据的原始参考链接</p>
+  <a class="back-link" href="/">← 返回检索</a>
+</header>
+
+<div class="content">
+  <div class="source-intro">
+    <h2>关于数据来源</h2>
+    <p>
+      本工具的塔罗牌义数据来自
+      <a href="https://w.taluo.com" target="_blank" rel="noopener">塔罗网（w.taluo.com）</a>，
+      该网站是国内主要的中文塔罗学习平台，收录了标准韦特塔罗牌的完整正逆位释义，
+      并提供每张牌在爱情、事业、财运等方面的场景解读。
+      以下列出所有 78 张牌的原始页面链接，供深入查阅。
+    </p>
+  </div>
+
+  {% set groups = [
+    ("大阿卡那", "major", None),
+    ("圣杯", "minor", "圣杯"),
+    ("权杖", "minor", "权杖"),
+    ("宝剑", "minor", "宝剑"),
+    ("星币", "minor", "星币"),
+  ] %}
+
+  {% for group_name, arcana, suit in groups %}
+    {% set group_cards = cards | selectattr("arcana", "equalto", arcana) %}
+    {% if suit %}
+      {% set group_cards = group_cards | selectattr("suit", "equalto", suit) %}
+    {% endif %}
+    {% set group_cards = group_cards | list %}
+    {% if group_cards %}
+    <div class="group-title">{{ group_name }} · {{ group_cards | length }} 张</div>
+    <div class="card-list">
+      {% for card in group_cards %}
+      <div class="card-row">
+        <span class="card-row-name">{{ card.name }}</span>
+        <span class="card-row-en">{{ card.name_en }}</span>
+        <div class="card-row-links">
+          {% if card.source_upright %}
+          <a class="src-link" href="{{ card.source_upright }}" target="_blank" rel="noopener">正位 ↗</a>
+          {% endif %}
+          {% if card.source_reversed %}
+          <a class="src-link" href="{{ card.source_reversed }}" target="_blank" rel="noopener">逆位 ↗</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endfor %}
+</div>
+
+</body>
+</html>

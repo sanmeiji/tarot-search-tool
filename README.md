@@ -36,6 +36,10 @@ python scraper.py
 
 抓取完成后重启 Flask 即可生效。
 
+## 关于
+
+Vibe coded with [Claude Sonnet 4.6](https://www.anthropic.com/claude) (`claude-sonnet-4-6`).
+
 ## 项目结构
 
 ```

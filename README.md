@@ -2,6 +2,21 @@
 
 基于韦特塔罗牌的中文检索工具，支持按牌名搜索，展示正逆位释义、关键词与牌面图像。
 
+Vibe coded with [Claude Sonnet 4.6](https://www.anthropic.com/claude) (`claude-sonnet-4-6`).
+
+## 结构
+
+```
+tarot_search_tool/
+├── app.py              Flask 后端，提供搜索 API 与页面路由
+├── scraper.py          数据抓取脚本
+├── data/
+│   └── tarot.json      78 张牌的完整数据
+└── templates/
+    ├── index.html      主检索页
+    └── sources.html    数据来源页
+```
+
 ## 功能
 
 - **全牌检索** — 覆盖全部 78 张塔罗牌（22 张大阿卡那 + 56 张小阿卡那），支持中文牌名、英文名、花色模糊匹配
@@ -35,20 +50,3 @@ python scraper.py
 ```
 
 抓取完成后重启 Flask 即可生效。
-
-## 关于
-
-Vibe coded with [Claude Sonnet 4.6](https://www.anthropic.com/claude) (`claude-sonnet-4-6`).
-
-## 项目结构
-
-```
-tarot_search_tool/
-├── app.py              Flask 后端，提供搜索 API 与页面路由
-├── scraper.py          数据抓取脚本
-├── data/
-│   └── tarot.json      78 张牌的完整数据
-└── templates/
-    ├── index.html      主检索页
-    └── sources.html    数据来源页
-```

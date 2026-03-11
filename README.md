@@ -36,7 +36,7 @@ tarot_search_tool/
 
 ```bash
 cd tarot_search_tool
-d:/Documents/Projects/.venv/Scripts/python.exe app.py
+/path/to/tarot_search_tool/.venv/Scripts/python.exe app.py
 ```
 
 打开浏览器访问 http://localhost:7777

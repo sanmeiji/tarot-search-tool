@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>抽取塔罗牌</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0d0d1a; }
+    ::-webkit-scrollbar-thumb { background: #2a2a45; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a3a60; }
+    * { scrollbar-width: thin; scrollbar-color: #2a2a45 #0d0d1a; }
+
+    body {
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #0d0d1a;
+      color: #e8e0d5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ─── Header ─── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.4rem 2rem;
+      border-bottom: 1px solid #1a1a30;
+      position: relative;
+    }
+    .page-title {
+      font-family: "Noto Serif SC", "Source Han Serif CN", serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #c9a96e;
+      letter-spacing: 0.1em;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .header-links {
+      display: flex;
+      gap: 1.2rem;
+      align-items: center;
+    }
+    .header-link {
+      color: #7a7a9a;
+      text-decoration: none;
+      font-size: 0.88rem;
+      transition: color 0.15s;
+    }
+    .header-link:hover { color: #c9a96e; }
+
+    /* ─── Main ─── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 2rem;
+      gap: 2.5rem;
+    }
+
+    /* ─── Count selector ─── */
+    .count-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+    .count-label {
+      color: #7a7a9a;
+      font-size: 0.9rem;
+      letter-spacing: 0.05em;
+    }
+    .count-btns {
+      display: flex;
+      gap: 0.6rem;
+    }
+    .count-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 1px solid #2a2a45;
+      background: none;
+      color: #8a8aaa;
+      font-family: "Noto Serif SC", serif;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .count-btn:hover { border-color: #c9a96e55; color: #c9a96e; }
+    .count-btn.active {
+      border-color: #c9a96e;
+      color: #c9a96e;
+      background: #c9a96e12;
+    }
+
+    /* ─── Draw button ─── */
+    .draw-btn-wrap {
+      position: relative;
+      padding: 2px;
+      border-radius: 28px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #c9a96e, #7c3aed, #1d4ed8, #0e7490);
+    }
+    .draw-btn-wrap::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: inherit;
+      animation: hue-cycle 3s linear infinite;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .draw-btn-wrap:hover::before,
+    .draw-btn-wrap.spinning::before {
+      opacity: 1;
+    }
+    @keyframes hue-cycle { to { filter: hue-rotate(360deg); } }
+    .draw-btn {
+      position: relative;
+      z-index: 1;
+      padding: 0.75rem 3rem;
+      background: #0d0d1a;
+      border: none;
+      border-radius: 26px;
+      color: #c9a96e;
+      font-family: "Noto Serif SC", serif;
+      font-size: 1.05rem;
+      letter-spacing: 0.18em;
+      cursor: pointer;
+      transition: color 0.2s;
+      display: block;
+    }
+    .draw-btn:hover { color: #e0c488; }
+    .draw-btn:disabled { opacity: 0.5; cursor: default; }
+
+    /* ─── Cards ─── */
+    .cards-area {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1.6rem;
+      width: 100%;
+      max-width: 1000px;
+    }
+
+    .drawn-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.7rem;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .drawn-card:hover { transform: translateY(-4px); }
+
+    .drawn-seq {
+      font-size: 0.75rem;
+      color: #8a8aaa;
+      letter-spacing: 0.08em;
+      margin-bottom: -0.2rem;
+    }
+
+    .drawn-img-wrap {
+      position: relative;
+    }
+    .drawn-img {
+      width: 140px;
+      border-radius: 6px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+      transition: transform 0.4s ease;
+      display: block;
+    }
+    .drawn-img.reversed { transform: rotate(180deg); }
+
+    .drawn-badge {
+      display: inline-block;
+      padding: 0.18rem 0.7rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+    .drawn-badge.upright { background: #1a2a1a; color: #7abf7a; border: 1px solid #7abf7a55; }
+    .drawn-badge.reversed { background: #2a1a1a; color: #bf7a7a; border: 1px solid #bf7a7a55; }
+
+    .drawn-name {
+      font-family: "Noto Serif SC", serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #c9a96e;
+      text-align: center;
+    }
+    .drawn-name-en {
+      font-size: 0.78rem;
+      color: #6a6a8a;
+      text-align: center;
+    }
+
+    /* ─── Source note ─── */
+    .source-note {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      font-size: 0.8rem;
+      letter-spacing: 0.06em;
+      justify-content: center;
+      margin-top: 0.5rem;
+    }
+    .source-note-line {
+      flex: 0 0 60px;
+      height: 1px;
+    }
+    .source-note.qrng { color: #5abf7a; }
+    .source-note.qrng .source-note-line {
+      background: linear-gradient(to right, transparent, #5abf7a);
+    }
+    .source-note.qrng .source-note-line:last-child {
+      background: linear-gradient(to left, transparent, #5abf7a);
+    }
+    .source-note.fallback { color: #4a4a6a; }
+    .source-note.fallback .source-note-line {
+      background: linear-gradient(to right, transparent, #4a4a6a);
+    }
+    .source-note.fallback .source-note-line:last-child {
+      background: linear-gradient(to left, transparent, #4a4a6a);
+    }
+    .source-note a { color: inherit; text-decoration: none; }
+    .source-note a:hover { text-decoration: underline; }
+
+    /* ─── Modal ─── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: #13132a;
+      border: 1px solid #3a3a5c;
+      border-radius: 14px;
+      width: max(800px, 65vw);
+      position: relative;
+      overflow: hidden;
+      animation: modalIn 0.18s ease;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .modal-close {
+      position: absolute;
+      top: 1rem; right: 1.2rem;
+      background: none; border: none;
+      color: #8a8aaa; font-size: 1.4rem;
+      cursor: pointer; z-index: 2;
+      transition: color 0.15s;
+    }
+    .modal-close:hover { color: #c9a96e; }
+
+    .modal-inner { display: flex; }
+    .modal-img-col {
+      flex: 0 0 280px;
+      background: #0d0d1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem 1rem;
+      gap: 1.4rem;
+    }
+    .modal-card-name-area { text-align: center; padding: 0 0.5rem; width: 100%; }
+    .modal-card-name-area::after {
+      content: "";
+      display: block;
+      margin: 1rem auto 0;
+      height: 1px;
+      width: 80%;
+      background: linear-gradient(to right, transparent, #c9a96e 50%, transparent);
+      opacity: 0.4;
+    }
+    .modal-img {
+      width: 240px;
+      border-radius: 6px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+      transition: transform 0.4s ease;
+    }
+    .modal-img.reversed { transform: rotate(180deg); }
+    .modal-orientation {
+      display: inline-block;
+      margin-top: 0.6rem;
+      padding: 0.2rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      font-weight: 600;
+    }
+    .modal-orientation.upright { background: #1a2a1a; color: #7abf7a; border: 1px solid #7abf7a55; }
+    .modal-orientation.reversed { background: #2a1a1a; color: #bf7a7a; border: 1px solid #bf7a7a55; }
+    .modal-content { flex: 1; padding: 1.8rem 1.8rem 1.8rem 1.4rem; min-width: 0; overflow-y: auto; max-height: 90vh; }
+    .modal-name {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #c9a96e;
+      letter-spacing: 0.08em;
+      font-family: "Noto Serif SC", "Source Han Serif CN", serif;
+      text-align: center;
+    }
+    .modal-name-en {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #8a8aaa;
+      margin-top: 0.2rem;
+      font-family: "Noto Serif SC", Georgia, serif;
+      text-align: center;
+    }
+    .modal-kw-mobile { display: none; }
+    .modal-body { display: flex; gap: 0; margin-top: 1rem; }
+    .modal-col { flex: 1; padding: 1rem; min-width: 0; }
+    .modal-col.upright { border-right: 1.5px solid #1e1e3a; }
+    .modal-col.reversed { padding-left: 1.05rem; }
+    .modal-col-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .modal-col-label-line { flex: 1; height: 1px; }
+    .modal-col.upright .modal-col-label { color: #70c090; }
+    .modal-col.upright .modal-col-label-line { background: linear-gradient(to right, transparent, #70c090); }
+    .modal-col.upright .modal-col-label-line:last-child { background: linear-gradient(to left, transparent, #70c090); }
+    .modal-col.reversed .modal-col-label { color: #c07070; }
+    .modal-col.reversed .modal-col-label-line { background: linear-gradient(to right, transparent, #c07070); }
+    .modal-col.reversed .modal-col-label-line:last-child { background: linear-gradient(to left, transparent, #c07070); }
+    .modal-col-desc { font-size: 0.85rem; color: #c0b8b0; line-height: 1.8; }
+    .modal-col-desc p { margin-bottom: 0.7rem; }
+    .modal-col-desc p:last-child { margin-bottom: 0; }
+    .modal-col-kw { margin-top: 0.8rem; display: flex; flex-wrap: wrap; gap: 0.28rem; justify-content: center; }
+    .modal-kw-tag {
+      font-size: 0.72rem;
+      padding: 0.18rem 0.5rem;
+      border-radius: 8px;
+      background: rgba(201,169,110,0.15);
+      color: #c8a860;
+      border: 1px solid rgba(201,169,110,0.35);
+    }
+    .modal-sources { margin-top: 1.2rem; display: flex; gap: 1rem; justify-content: center; }
+    .src-link {
+      font-size: 0.75rem;
+      color: #4a6080;
+      text-decoration: none;
+      padding: 0.2rem 0.6rem;
+      border: 1px solid #2a3050;
+      border-radius: 10px;
+      transition: all 0.15s;
+    }
+    .src-link:hover { border-color: #c9a96e; color: #c9a96e; }
+
+    @media (max-width: 600px) {
+      .page-title {
+        position: static;
+        transform: none;
+        font-size: 1.1rem;
+      }
+      .modal { max-height: 90vh; display: flex; flex-direction: column; }
+      .modal-inner { flex-direction: column; overflow-y: auto; flex: 1; }
+      .modal-img-col { flex: none; padding: 1.2rem 1rem 0; justify-content: flex-start; flex-direction: row; gap: 1rem; align-items: center; }
+      .modal-img { width: 80px; }
+      .modal-content { padding: 0.8rem 1rem 1.2rem; max-height: none; }
+      .modal-kw-row { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; margin-bottom: 0.7rem; }
+      .modal-kw-row-label {
+        font-size: 0.75rem; letter-spacing: 0.08em; margin-right: 0.3rem;
+        padding: 0.15rem 0.5rem; border-radius: 4px;
+      }
+      .modal-kw-row-label.up { background: #1a2a1a; color: #7a9a7a; }
+      .modal-kw-row-label.rev { background: #2a1a1a; color: #9a7a7a; }
+      .cards-area { gap: 1rem; }
+      .drawn-img { width: 100px; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="page-title">抽取塔罗牌</div>
+  <div class="header-links">
+    <a class="header-link" href="/draw/about">关于抽牌方式 ↗</a>
+    <a class="header-link" href="/">返回检索 ↗</a>
+  </div>
+</header>
+
+<main class="main">
+  <div class="count-section">
+    <div class="count-label">✦ 请选择抽牌数量 ✦</div>
+    <div class="count-btns">
+      <button class="count-btn active" data-n="1">一</button>
+      <button class="count-btn" data-n="2">二</button>
+      <button class="count-btn" data-n="3">三</button>
+      <button class="count-btn" data-n="4">四</button>
+      <button class="count-btn" data-n="5">五</button>
+    </div>
+  </div>
+
+  <div class="draw-btn-wrap">
+    <button class="draw-btn" id="drawBtn">开始</button>
+  </div>
+
+  <div class="cards-area" id="cardsArea"></div>
+  <div class="source-note" id="sourceNote"></div>
+</main>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-inner">
+      <div class="modal-img-col">
+        <div id="modalCardName" class="modal-card-name-area"></div>
+        <img class="modal-img" id="modalImg" src="" alt="">
+      </div>
+      <div class="modal-content" id="modalContent"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const IMG_BASE = "/static/images";
+
+const NUM_MAP = {"A":"01","2":"02","3":"03","4":"04","5":"05","6":"06","7":"07","8":"08","9":"09","10":"10","侍从":"11","骑士":"12","皇后":"13","国王":"14"};
+  const SUIT_MAP = {"圣杯":"c","权杖":"w","宝剑":"s","星币":"p"};
+
+  function getImageUrl(card) {
+    if (card.arcana === 'major') {
+      return `${IMG_BASE}/m${String(card.id - 1).padStart(2,'0')}.jpg`;
+    }
+    return `${IMG_BASE}/${SUIT_MAP[card.suit]||''}${NUM_MAP[card.number]||''}.jpg`;
+  }
+
+  function displayName(card) {
+    return card.arcana === 'major' ? `${card.number}·${card.name}` : card.name;
+  }
+
+  // ─── Count selector ───
+  let selectedN = 1;
+  document.querySelectorAll('.count-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedN = parseInt(btn.dataset.n);
+    });
+  });
+
+  let lastResults = [];
+
+  // ─── Draw ───
+  document.getElementById('drawBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('drawBtn');
+    btn.disabled = true;
+    btn.textContent = '···';
+    btn.closest('.draw-btn-wrap').classList.add('spinning');
+    document.getElementById('cardsArea').innerHTML = '';
+    document.getElementById('sourceNote').textContent = '';
+    try {
+      const res = await fetch(`/api/draw?n=${selectedN}`);
+      const data = await res.json();
+      lastResults = data.results;
+      renderCards(data.results);
+      const note = document.getElementById('sourceNote');
+      if (data.qrng) {
+        note.className = 'source-note qrng';
+        note.innerHTML = `<span class="source-note-line"></span><a href="/draw/about">ANU QRNG</a><span class="source-note-line"></span>`;
+      } else {
+        note.className = 'source-note fallback';
+        note.innerHTML = `<span class="source-note-line"></span>pseudo-random<span class="source-note-line"></span>`;
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '开始';
+      btn.closest('.draw-btn-wrap').classList.remove('spinning');
+    }
+  });
+
+  const SEQ = ['', '✦ 1 ✦', '✦ 2 ✦', '✦ 3 ✦', '✦ 4 ✦', '✦ 5 ✦'];
+
+  function renderCards(results) {
+    document.getElementById('cardsArea').innerHTML = results.map((item, i) => `
+      <div class="drawn-card" onclick="openModal(${item.card.id}, ${item.reversed})">
+        ${results.length > 1 ? `<div class="drawn-seq">${SEQ[i + 1]}</div>` : ''}
+        <img class="drawn-img${item.reversed ? ' reversed' : ''}" src="${getImageUrl(item.card)}" alt="${item.card.name}">
+        <span class="drawn-badge ${item.reversed ? 'reversed' : 'upright'}">${item.reversed ? '逆位' : '正位'}</span>
+        <div class="drawn-name">${displayName(item.card)}</div>
+        <div class="drawn-name-en">${item.card.name_en}</div>
+      </div>
+    `).join('');
+  }
+
+  // ─── Modal ───
+  function kwTags(str) {
+    if (!str) return '';
+    return str.split(/[、，,]/).map(k => k.trim()).filter(Boolean)
+      .map(k => `<span class="modal-kw-tag">${k}</span>`).join('');
+  }
+
+  function openModal(cardId, reversed) {
+    const item = lastResults.find(r => r.card.id === cardId);
+    if (!item) return;
+    const card = item.card;
+
+    const img = document.getElementById('modalImg');
+    img.src = getImageUrl(card);
+    img.alt = card.name;
+    img.classList.toggle('reversed', reversed === true);
+
+    document.getElementById('modalCardName').innerHTML = `
+      <div class="modal-name">${displayName(card)}</div>
+      <div class="modal-name-en">${card.name_en}</div>
+      <div class="modal-orientation ${reversed ? 'reversed' : 'upright'}">${reversed ? '逆位' : '正位'}</div>
+    `;
+
+    function fmtDesc(raw) {
+      if (!raw) return '';
+      return raw.split('\n').filter(l => l.trim()).map(l => `<p>${l}</p>`).join('');
+    }
+    const descUp  = fmtDesc(card.description_upright)  || card.keywords_upright  || '';
+    const descRev = fmtDesc(card.description_reversed) || card.keywords_reversed || '';
+    const colClass = reversed ? 'reversed' : 'upright';
+    const colLabel = reversed ? '逆位' : '正位';
+    const colDesc  = reversed ? descRev : descUp;
+    const colKw    = reversed ? (card.keywords_reversed || '') : (card.keywords_upright  || '');
+    const colSrc   = reversed ? card.source_reversed : card.source_upright;
+    const colSource = colSrc ? `
+      <div class="modal-sources">
+        <a class="src-link" href="${colSrc}" target="_blank" rel="noopener">${colLabel}参考 ↗</a>
+      </div>` : '';
+
+    document.getElementById('modalContent').innerHTML = `
+      <div class="modal-body" style="display:flex">
+        <div class="modal-col ${colClass}" style="border-right:none;flex:1">
+          <div class="modal-col-label"><span class="modal-col-label-line"></span>${colLabel}<span class="modal-col-label-line"></span></div>
+          <div class="modal-col-kw" style="margin-bottom:0.8rem">${kwTags(colKw)}</div>
+          <div class="modal-col-desc">${colDesc}</div>
+        </div>
+      </div>
+      ${colSource}
+    `;
+
+    document.getElementById('modalOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function handleOverlayClick(e) {
+    if (e.target === document.getElementById('modalOverlay')) closeModal();
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>关于抽牌方式</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #0d0d1a;
+      color: #e8e0d5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.4rem 2rem;
+      border-bottom: 1px solid #1a1a30;
+    }
+    .page-title {
+      font-family: "Noto Serif SC", "Source Han Serif CN", serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #c9a96e;
+      letter-spacing: 0.1em;
+    }
+    .header-links { display: flex; gap: 1.2rem; }
+    .header-link {
+      color: #7a7a9a;
+      text-decoration: none;
+      font-size: 0.88rem;
+      transition: color 0.15s;
+    }
+    .header-link:hover { color: #c9a96e; }
+
+    .main {
+      flex: 1;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .section-title {
+      font-family: "Noto Serif SC", serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #c9a96e;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.8rem;
+    }
+
+    p {
+      font-size: 0.92rem;
+      line-height: 1.9;
+      color: #a0a0c0;
+      margin-bottom: 0.7rem;
+    }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, #2a2a45 50%, transparent);
+    }
+
+    .card-order {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.6rem;
+    }
+    .suit-tag {
+      padding: 0.25rem 0.8rem;
+      border: 1px solid #2a2a45;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      color: #8a8aaa;
+    }
+    .suit-tag span {
+      color: #c9a96e;
+      margin-right: 0.3rem;
+    }
+
+    .qrng-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+      padding: 0.5rem 1.2rem;
+      border: 1px solid #c9a96e55;
+      border-radius: 8px;
+      color: #c9a96e;
+      text-decoration: none;
+      font-size: 0.88rem;
+      transition: all 0.15s;
+    }
+    .qrng-link:hover { background: #c9a96e12; border-color: #c9a96e; }
+
+    .note {
+      font-size: 0.82rem;
+      color: #4a4a6a;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="page-title">关于抽牌方式</div>
+  <div class="header-links">
+    <a class="header-link" href="/draw">返回抽牌 ↗</a>
+    <a class="header-link" href="/">检索 ↗</a>
+  </div>
+</header>
+
+<main class="main">
+
+  <div>
+    <div class="section-title">随机数来源</div>
+    <p>本工具的随机数来自澳大利亚国立大学（ANU）量子光学实验室的量子随机数生成器（QRNG）。该生成器通过测量真空量子涨落产生随机数，是目前已知最接近真正随机的数字来源之一。</p>
+    <p>每次抽牌时，系统向 ANU QRNG 的骰子服务请求若干量子随机整数，用于确定抽到哪张牌以及正逆位。若 QRNG 服务暂时不可用，则自动回退至本地伪随机数。</p>
+    <a class="qrng-link" href="https://qrng.anu.edu.au/dice-throw/" target="_blank" rel="noopener">
+      ANU 量子随机数生成器 ↗
+    </a>
+  </div>
+
+  <div class="divider"></div>
+
+  <div>
+    <div class="section-title">牌库编号方式</div>
+    <p>78 张塔罗牌按以下顺序编为 1–78 号，抽牌时不重复：</p>
+    <div class="card-order">
+      <div class="suit-tag"><span>1–22</span>大阿卡那</div>
+      <div class="suit-tag"><span>23–36</span>权杖</div>
+      <div class="suit-tag"><span>37–50</span>圣杯</div>
+      <div class="suit-tag"><span>51–64</span>宝剑</div>
+      <div class="suit-tag"><span>65–78</span>星币</div>
+    </div>
+    <p style="margin-top:0.8rem">小阿卡那每组 14 张，顺序为：Ace、2–10、侍从、骑士、皇后、国王。</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <div>
+    <div class="section-title">正逆位判定</div>
+    <p>正逆位由独立的量子随机数决定：奇数为逆位，偶数为正位，各占 50% 概率。</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <p class="note">牌义数据来自<a href="https://w.taluo.com" target="_blank" rel="noopener" style="color:#5a5a7a;text-decoration:none">塔罗网 w.taluo.com</a>，牌面图像来自 Rider-Waite-Smith 版本（公共领域，CC0）。</p>
+
+</main>
+
+</body>
+</html>

@@ -194,6 +194,36 @@
     }
     .pos-btn:hover { color: #c9a96e; }
 
+    .draw-section {
+      padding: 1.2rem 1.2rem 0.6rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.9rem;
+    }
+    .draw-section-divider {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(to right, transparent, #c9a96e44 50%, transparent);
+    }
+    .draw-btn {
+      display: block;
+      padding: 0.55rem 1.8rem;
+      background: none;
+      border: 1px solid #c9a96e55;
+      border-radius: 20px;
+      color: #c9a96e;
+      font-family: "Noto Serif SC", serif;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.12em;
+      text-decoration: none;
+      transition: background 0.15s, border-color 0.15s;
+      text-align: center;
+    }
+    .draw-btn:hover { background: #c9a96e18; border-color: #c9a96e; }
+
     .sidebar-link {
       color: #7a7a9a;
       text-decoration: none;
@@ -396,7 +426,21 @@
       width: 240px;
       border-radius: 6px;
       box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+      transition: transform 0.4s ease;
     }
+    .modal-img.reversed { transform: rotate(180deg); }
+
+    .modal-orientation {
+      display: inline-block;
+      margin-top: 0.6rem;
+      padding: 0.2rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      font-weight: 600;
+    }
+    .modal-orientation.upright { background: #1a2a1a; color: #7abf7a; border: 1px solid #7abf7a55; }
+    .modal-orientation.reversed { background: #2a1a1a; color: #bf7a7a; border: 1px solid #bf7a7a55; }
 
     .modal-content { flex: 1; padding: 1.8rem 1.8rem 1.8rem 1.4rem; min-width: 0; overflow-y: auto; max-height: 90vh; }
 
@@ -545,19 +589,18 @@
         flex-direction: column;
         padding: 1.2rem 1rem 0.8rem;
         gap: 0.7rem;
-        border-bottom: 1px solid #2a2a45;
-        margin-bottom: 1rem;
       }
 
       .mobile-top-row {
         display: flex;
         align-items: center;
-        gap: 0.8rem;
+        justify-content: space-between;
       }
 
       .mobile-title {
         font-family: "Noto Serif SC", "Source Han Serif CN", serif;
-        font-size: 1.1rem;
+        font-size: 1.3rem;
+        padding-left: 5px;
         font-weight: 700;
         color: #c9a96e;
         letter-spacing: 0.1em;
@@ -569,8 +612,8 @@
         display: flex;
         align-items: center;
         gap: 0;
-        flex: 1;
         flex-wrap: wrap;
+        justify-content: center;
       }
 
       .mobile-filter-btn {
@@ -594,10 +637,13 @@
       .mobile-filter-btn:hover { color: #a09060; }
 
       .mobile-search {
-        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
         width: 100%;
-        max-width: 480px;
+        position: relative;
       }
+      .mobile-search input { flex: 1; }
 
       .mobile-search input {
         width: 100%;
@@ -627,6 +673,24 @@
         display: none;
       }
       .mobile-clear.visible { display: block; }
+
+      .mobile-draw-btn {
+        flex-shrink: 0;
+        padding: 0.4rem 1rem;
+        background: none;
+        border: 1px solid #c9a96e66;
+        border-radius: 20px;
+        color: #c9a96e;
+        font-family: "Noto Serif SC", "Source Han Serif CN", serif;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+        text-decoration: none;
+        transition: background 0.15s, border-color 0.15s;
+        letter-spacing: 0.08em;
+      }
+      .mobile-draw-btn:hover { background: #c9a96e18; border-color: #c9a96e; }
 
       .results-meta { display: none; }
 
@@ -681,18 +745,19 @@
 <header class="mobile-header">
   <div class="mobile-top-row">
     <div class="mobile-title">塔罗牌检索</div>
-    <div class="mobile-filters" id="mobileFilters">
-      <button class="mobile-filter-btn active" data-filter="all">全部</button>
-      <button class="mobile-filter-btn" data-filter="major">大阿卡那</button>
-      <button class="mobile-filter-btn" data-filter="圣杯">圣杯</button>
-      <button class="mobile-filter-btn" data-filter="权杖">权杖</button>
-      <button class="mobile-filter-btn" data-filter="宝剑">宝剑</button>
-      <button class="mobile-filter-btn" data-filter="星币">星币</button>
-    </div>
+    <a class="mobile-draw-btn" href="/draw">✦ 抽牌 ✦</a>
   </div>
   <div class="mobile-search">
     <input type="text" id="mobileSearchInput" placeholder="搜索牌名…" autocomplete="off">
     <button class="mobile-clear" id="mobileClearBtn">✕</button>
+  </div>
+  <div class="mobile-filters" id="mobileFilters">
+    <button class="mobile-filter-btn active" data-filter="all">全部</button>
+    <button class="mobile-filter-btn" data-filter="major">大阿卡那</button>
+    <button class="mobile-filter-btn" data-filter="权杖">权杖</button>
+    <button class="mobile-filter-btn" data-filter="圣杯">圣杯</button>
+    <button class="mobile-filter-btn" data-filter="宝剑">宝剑</button>
+    <button class="mobile-filter-btn" data-filter="星币">星币</button>
   </div>
 </header>
 
@@ -710,11 +775,17 @@
     <div class="filters" id="filters">
       <button class="filter-btn active" data-filter="all">全部</button>
       <button class="filter-btn" data-filter="major">大阿卡那</button>
-      <button class="filter-btn" data-filter="圣杯">小阿卡那·圣杯</button>
       <button class="filter-btn" data-filter="权杖">小阿卡那·权杖</button>
+      <button class="filter-btn" data-filter="圣杯">小阿卡那·圣杯</button>
       <button class="filter-btn" data-filter="宝剑">小阿卡那·宝剑</button>
       <button class="filter-btn" data-filter="星币">小阿卡那·星币</button>
     </div>
+  </div>
+
+  <div class="draw-section">
+    <div class="draw-section-divider"></div>
+    <a class="draw-btn" href="/draw">✦ 抽牌 ✦</a>
+    <div class="draw-section-divider"></div>
   </div>
 
   <div class="sidebar-footer">
@@ -845,15 +916,22 @@
       .map(k => `<span class="modal-kw-tag">${k}</span>`).join('');
   }
 
-  function openModal(cardId) {
+  function openModal(cardId, reversed) {
     const card = allCards.find(c => c.id === cardId);
     if (!card) return;
 
-    document.getElementById('modalImg').src = getImageUrl(card);
-    document.getElementById('modalImg').alt = card.name;
+    const img = document.getElementById('modalImg');
+    img.src = getImageUrl(card);
+    img.alt = card.name;
+    img.classList.toggle('reversed', reversed === true);
+
+    const orientBadge = (reversed === undefined) ? '' :
+      `<div class="modal-orientation ${reversed ? 'reversed' : 'upright'}">${reversed ? '逆位' : '正位'}</div>`;
+
     document.getElementById('modalCardName').innerHTML = `
       <div class="modal-name">${displayName(card)}</div>
       <div class="modal-name-en">${card.name_en}</div>
+      ${orientBadge}
     `;
 
     function fmtDesc(raw) {

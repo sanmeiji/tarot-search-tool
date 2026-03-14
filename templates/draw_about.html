@@ -3,9 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>关于抽牌方式</title>
+  <title>关于抽牌方式 · 塔罗牌检索</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0d0d1a; }
+    ::-webkit-scrollbar-thumb { background: #2a2a45; border-radius: 3px; }
+    * { scrollbar-width: thin; scrollbar-color: #2a2a45 #0d0d1a; }
 
     body {
       font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -22,6 +27,7 @@
       justify-content: space-between;
       padding: 1.4rem 2rem;
       border-bottom: 1px solid #1a1a30;
+      position: relative;
     }
     .page-title {
       font-family: "Noto Serif SC", "Source Han Serif CN", serif;
@@ -29,8 +35,11 @@
       font-weight: 700;
       color: #c9a96e;
       letter-spacing: 0.1em;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
     }
-    .header-links { display: flex; gap: 1.2rem; }
+    .header-links { display: flex; gap: 1.2rem; align-items: center; }
     .header-link {
       color: #7a7a9a;
       text-decoration: none;
@@ -41,72 +50,145 @@
 
     .main {
       flex: 1;
-      max-width: 720px;
+      max-width: 660px;
       margin: 0 auto;
-      padding: 3rem 2rem;
+      padding: 3rem 2rem 4rem;
       display: flex;
       flex-direction: column;
-      gap: 2rem;
+      gap: 2.5rem;
+      width: 100%;
     }
 
     .section-title {
       font-family: "Noto Serif SC", serif;
-      font-size: 1.05rem;
+      font-size: 0.7rem;
       font-weight: 700;
-      color: #c9a96e;
-      letter-spacing: 0.08em;
-      margin-bottom: 0.8rem;
+      letter-spacing: 0.2em;
+      color: #6a6a8a;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, #2a2a45, transparent);
     }
 
     p {
-      font-size: 0.92rem;
+      font-size: 0.88rem;
       line-height: 1.9;
-      color: #a0a0c0;
-      margin-bottom: 0.7rem;
+      color: #9a9298;
+      margin-bottom: 0.6rem;
     }
+    p:last-child { margin-bottom: 0; }
+    a { color: #7090c0; text-decoration: none; }
+    a:hover { color: #c9a96e; }
 
-    .divider {
-      height: 1px;
-      background: linear-gradient(to right, transparent, #2a2a45 50%, transparent);
+    /* Step boxes */
+    .steps { display: flex; flex-direction: column; gap: 0.8rem; }
+    .step {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
     }
+    .step-num {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 1px solid #3a3a5c;
+      color: #c9a96e;
+      font-size: 0.72rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 0.1rem;
+    }
+    .step-body { font-size: 0.88rem; color: #9a9298; line-height: 1.8; }
+    .step-body strong { color: #c0b8b0; font-weight: 600; }
 
-    .card-order {
+    /* Orientation example */
+    .orient-example {
+      background: #13132a;
+      border: 1px solid #2a2a45;
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      margin-top: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .orient-row {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      font-size: 0.82rem;
+    }
+    .orient-num {
+      font-family: "Noto Serif SC", serif;
+      font-weight: 700;
+      color: #7a7a9a;
+      width: 32px;
+      text-align: center;
+    }
+    .orient-arrow { color: #3a3a5a; }
+    .orient-parity { color: #7a7a9a; width: 32px; }
+    .orient-arrow2 { color: #3a3a5a; }
+    .orient-result { font-weight: 600; }
+    .orient-result.up { color: #70c090; }
+    .orient-result.rev { color: #c07070; }
+
+    /* Card order */
+    .order-list {
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
       margin-top: 0.6rem;
     }
-    .suit-tag {
+    .order-tag {
       padding: 0.25rem 0.8rem;
       border: 1px solid #2a2a45;
       border-radius: 20px;
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       color: #8a8aaa;
     }
-    .suit-tag span {
-      color: #c9a96e;
-      margin-right: 0.3rem;
-    }
+    .order-tag em { color: #c9a96e; font-style: normal; margin-right: 0.3rem; }
 
+    /* QRNG link */
     .qrng-link {
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
-      margin-top: 0.5rem;
-      padding: 0.5rem 1.2rem;
-      border: 1px solid #c9a96e55;
+      margin-top: 0.6rem;
+      padding: 0.45rem 1rem;
+      border: 1px solid #c9a96e44;
       border-radius: 8px;
       color: #c9a96e;
-      text-decoration: none;
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       transition: all 0.15s;
     }
-    .qrng-link:hover { background: #c9a96e12; border-color: #c9a96e; }
+    .qrng-link:hover { background: #c9a96e12; border-color: #c9a96e; color: #c9a96e; }
 
-    .note {
+    /* Fallback note */
+    .fallback-note {
+      background: #1a1a2a;
+      border-left: 2px solid #3a3a5c;
+      padding: 0.7rem 1rem;
+      border-radius: 0 6px 6px 0;
       font-size: 0.82rem;
-      color: #4a4a6a;
+      color: #6a6a8a;
       line-height: 1.7;
+      margin-top: 0.8rem;
+    }
+
+    @media (max-width: 600px) {
+      .page-title { position: static; transform: none; font-size: 1.1rem; }
+      .main { padding: 2rem 1.2rem 3rem; }
     }
   </style>
 </head>
@@ -122,40 +204,73 @@
 
 <main class="main">
 
-  <div>
-    <div class="section-title">随机数来源</div>
-    <p>本工具的随机数来自澳大利亚国立大学（ANU）量子光学实验室的量子随机数生成器（QRNG）。该生成器通过测量真空量子涨落产生随机数，是目前已知最接近真正随机的数字来源之一。</p>
-    <p>每次抽牌时，系统向 ANU QRNG 的骰子服务请求若干量子随机整数，用于确定抽到哪张牌以及正逆位。若 QRNG 服务暂时不可用，则自动回退至本地伪随机数。</p>
-    <a class="qrng-link" href="https://qrng.anu.edu.au/dice-throw/" target="_blank" rel="noopener">
-      ANU 量子随机数生成器 ↗
-    </a>
-  </div>
+  <section>
+    <div class="section-title">量子随机数来源</div>
+    <p>随机数由澳大利亚国立大学量子光学实验室的 QRNG 提供，通过测量真空量子涨落产生，是目前已知最接近真随机的数字来源之一。</p>
+    <a class="qrng-link" href="https://qrng.anu.edu.au/dice-throw/" target="_blank" rel="noopener">ANU 量子随机数生成器 ↗</a>
+    <div class="fallback-note">使用 QRNG 服务成功抽牌后，结果下方会标注 ANU QRNG。若服务暂时不可用，系统将自动回退至本地伪随机数（Python <code>random</code> 模组），抽牌结果下方会标注 pseudo-RNG。</div>
+  </section>
 
-  <div class="divider"></div>
-
-  <div>
-    <div class="section-title">牌库编号方式</div>
-    <p>78 张塔罗牌按以下顺序编为 1–78 号，抽牌时不重复：</p>
-    <div class="card-order">
-      <div class="suit-tag"><span>1–22</span>大阿卡那</div>
-      <div class="suit-tag"><span>23–36</span>权杖</div>
-      <div class="suit-tag"><span>37–50</span>圣杯</div>
-      <div class="suit-tag"><span>51–64</span>宝剑</div>
-      <div class="suit-tag"><span>65–78</span>星币</div>
+  <section>
+    <div class="section-title">牌库编号</div>
+    <p>78 张牌按以下顺序编为 1–78 号，每次抽牌从中<strong>不重复</strong>抽取：</p>
+    <div class="order-list">
+      <div class="order-tag"><em>1–22</em>大阿卡那</div>
+      <div class="order-tag"><em>23–36</em>权杖</div>
+      <div class="order-tag"><em>37–50</em>圣杯</div>
+      <div class="order-tag"><em>51–64</em>宝剑</div>
+      <div class="order-tag"><em>65–78</em>星币</div>
     </div>
     <p style="margin-top:0.8rem">小阿卡那每组 14 张，顺序为：Ace、2–10、侍从、骑士、皇后、国王。</p>
-  </div>
+  </section>
 
-  <div class="divider"></div>
+  <section>
+    <div class="section-title">抽牌流程</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">向 <strong>ANU 量子随机数生成器</strong>请求 <strong>两组各 n 个</strong>随机整数（n 为抽牌数），范围 1–78，每组内不重复，两组相互独立。</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body"><strong>第一组</strong>数字用于选牌：每个数对应牌库中编号相同的那张牌。</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body"><strong>第二组</strong>数字用于判定正逆位：奇数为逆位，偶数为正位。</div>
+      </div>
+    </div>
+  </section>
 
-  <div>
-    <div class="section-title">正逆位判定</div>
-    <p>正逆位由独立的量子随机数决定：奇数为逆位，偶数为正位，各占 50% 概率。</p>
-  </div>
-
-  <div class="divider"></div>
-
-  <p class="note">牌义数据来自<a href="https://w.taluo.com" target="_blank" rel="noopener" style="color:#5a5a7a;text-decoration:none">塔罗网 w.taluo.com</a>，牌面图像来自 Rider-Waite-Smith 版本（公共领域，CC0）。</p>
+  <section>
+    <div class="section-title">正逆位判定示例</div>
+    <p>假设抽 3 张牌，第二组取得 3 个随机数如下：</p>
+    <div class="orient-example">
+      <div class="orient-row">
+        <span class="orient-num">37</span>
+        <span class="orient-arrow">→</span>
+        <span class="orient-parity">奇数</span>
+        <span class="orient-arrow2">→</span>
+        <span class="orient-result rev">逆位</span>
+      </div>
+      <div class="orient-row">
+        <span class="orient-num">52</span>
+        <span class="orient-arrow">→</span>
+        <span class="orient-parity">偶数</span>
+        <span class="orient-arrow2">→</span>
+        <span class="orient-result up">正位</span>
+      </div>
+      <div class="orient-row">
+        <span class="orient-num">9</span>
+        <span class="orient-arrow">→</span>
+        <span class="orient-parity">奇数</span>
+        <span class="orient-arrow2">→</span>
+        <span class="orient-result rev">逆位</span>
+      </div>
+    </div>
+    <p style="margin-top:0.8rem">正逆位与选牌所用的随机数两组相互独立，互不影响。</p>
+    <div class="fallback-note" style="margin-top:0.8rem">由于每组内部采用不重复抽取，1–78 中奇偶数各半，每抽出一个数后，剩余池的奇偶比例会轻微变化。不过这种变化对抽牌结果的影响极小，即使一次抽取5张牌也可忽略不计。</div>
+  </section>
 
 </main>
 

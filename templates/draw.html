@@ -466,6 +466,27 @@ const NUM_MAP = {"A":"01","2":"02","3":"03","4":"04","5":"05","6":"06","7":"07",
 
   let lastResults = [];
 
+  function showNote(qrng) {
+    const note = document.getElementById('sourceNote');
+    if (qrng) {
+      note.className = 'source-note qrng';
+      note.innerHTML = `<span class="source-note-line"></span><a href="/draw/about">ANU QRNG</a><span class="source-note-line"></span>`;
+    } else {
+      note.className = 'source-note fallback';
+      note.innerHTML = `<span class="source-note-line"></span>pseudo-RNG<span class="source-note-line"></span>`;
+    }
+  }
+
+  // ─── Restore saved results ───
+  try {
+    const saved = JSON.parse(sessionStorage.getItem('tarot_draw'));
+    if (saved && saved.results && saved.results.length) {
+      lastResults = saved.results;
+      renderCards(saved.results);
+      showNote(saved.qrng);
+    }
+  } catch(e) {}
+
   // ─── Draw ───
   document.getElementById('drawBtn').addEventListener('click', async () => {
     const btn = document.getElementById('drawBtn');
@@ -479,14 +500,8 @@ const NUM_MAP = {"A":"01","2":"02","3":"03","4":"04","5":"05","6":"06","7":"07",
       const data = await res.json();
       lastResults = data.results;
       renderCards(data.results);
-      const note = document.getElementById('sourceNote');
-      if (data.qrng) {
-        note.className = 'source-note qrng';
-        note.innerHTML = `<span class="source-note-line"></span><a href="/draw/about">ANU QRNG</a><span class="source-note-line"></span>`;
-      } else {
-        note.className = 'source-note fallback';
-        note.innerHTML = `<span class="source-note-line"></span>pseudo-RNG<span class="source-note-line"></span>`;
-      }
+      showNote(data.qrng);
+      sessionStorage.setItem('tarot_draw', JSON.stringify({results: data.results, qrng: data.qrng}));
     } finally {
       btn.disabled = false;
       btn.textContent = '开始';

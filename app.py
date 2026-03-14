@@ -1,14 +1,34 @@
 import json
 import os
 import re
+import sqlite3
 import time
 import random
 import requests
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect
 
 app = Flask(__name__)
 
-DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "tarot.json")
+DATA_PATH  = os.path.join(os.path.dirname(__file__), "data", "tarot.json")
+STATS_DB   = os.path.join(os.path.dirname(__file__), "data", "stats.db")
+TRACK_PATHS = {'/', '/draw', '/draw/about', '/about'}
+
+
+def _init_stats():
+    conn = sqlite3.connect(STATS_DB)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS views (
+            id   INTEGER PRIMARY KEY,
+            path TEXT    NOT NULL,
+            date TEXT    NOT NULL,
+            ts   INTEGER NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+_init_stats()
 
 with open(DATA_PATH, encoding="utf-8") as f:
     CARDS = json.load(f)["cards"]
@@ -72,6 +92,20 @@ def search_cards(query: str) -> list:
     return results
 
 
+@app.before_request
+def track_view():
+    if request.path in TRACK_PATHS and request.method == 'GET':
+        try:
+            conn = sqlite3.connect(STATS_DB)
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("INSERT INTO views (path, date, ts) VALUES (?, ?, ?)",
+                         (request.path, time.strftime('%Y-%m-%d'), int(time.time())))
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -90,17 +124,18 @@ def all_cards():
 
 
 def qrng_draw(n):
-    """Draw n*2 numbers from QRNG (first n = card indices 1-78, last n = orientation).
+    """Draw 2 independent sets of n numbers from QRNG.
+    Set 1 (card indices 1-78, norepeat) selects cards.
+    Set 2 (1-78, norepeat) determines orientation via odd/even.
     Falls back to Python random on failure."""
-    rep = n * 2
     try:
         nonce = get_qrng_nonce()
         r = requests.post(
             "https://qrng.anu.edu.au/wp-admin/admin-ajax.php",
             data={
                 "repeats": "norepeat",
-                "set_num": "1",
-                "rep_num": str(rep),
+                "set_num": "2",
+                "rep_num": str(n),
                 "min_num": "1",
                 "max_num": "78",
                 "action": "dice_action",
@@ -116,9 +151,7 @@ def qrng_draw(n):
         raw = r.json()
         data = json.loads(raw) if isinstance(raw, str) else raw
         if data.get("type") == "success":
-            nums = data["output"][0]
-            return nums[:n], nums[n:], True
-        # Invalid nonce or other error — clear cache so next call re-fetches
+            return data["output"][0], data["output"][1], True
         _nonce_cache["value"] = None
         raise ValueError("QRNG error")
     except Exception:
@@ -148,9 +181,33 @@ def draw_about():
     return render_template("draw_about.html")
 
 
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+
+@app.route("/api/stats")
+def stats():
+    try:
+        conn = sqlite3.connect(STATS_DB)
+        conn.execute("PRAGMA journal_mode=WAL")
+        totals = conn.execute(
+            "SELECT path, COUNT(*) FROM views GROUP BY path ORDER BY COUNT(*) DESC"
+        ).fetchall()
+        total = sum(r[1] for r in totals)
+        conn.close()
+        path_names = {'/': '检索首页', '/draw': '抽牌', '/draw/about': '抽牌说明', '/about': '关于'}
+        return jsonify({
+            'total': total,
+            'pages': [{'path': r[0], 'name': path_names.get(r[0], r[0]), 'count': r[1]} for r in totals],
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route("/sources")
 def sources():
-    return render_template("sources.html", cards=CARDS)
+    return redirect("/about")
 
 
 if __name__ == "__main__":

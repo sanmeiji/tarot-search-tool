@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>关于 · 塔罗牌检索</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0d0d1a; }
+    ::-webkit-scrollbar-thumb { background: #2a2a45; border-radius: 3px; }
+    * { scrollbar-width: thin; scrollbar-color: #2a2a45 #0d0d1a; }
+
+    body {
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #0d0d1a;
+      color: #e8e0d5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.4rem 2rem;
+      border-bottom: 1px solid #1a1a30;
+      position: relative;
+    }
+    .page-title {
+      font-family: "Noto Serif SC", "Source Han Serif CN", serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #c9a96e;
+      letter-spacing: 0.1em;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .header-links { display: flex; gap: 1.2rem; align-items: center; }
+    .header-link {
+      color: #7a7a9a;
+      text-decoration: none;
+      font-size: 0.88rem;
+      transition: color 0.15s;
+    }
+    .header-link:hover { color: #c9a96e; }
+
+    .main {
+      flex: 1;
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 3rem 2rem 4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+      width: 100%;
+    }
+
+    .section-title {
+      font-family: "Noto Serif SC", serif;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      color: #6a6a8a;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, #2a2a45, transparent);
+    }
+
+    .section-body {
+      font-size: 0.88rem;
+      color: #9a9298;
+      line-height: 1.9;
+    }
+    .section-body p + p { margin-top: 0.6rem; }
+    .section-body a { color: #7090c0; text-decoration: none; }
+    .section-body a:hover { color: #c9a96e; }
+
+    .attr-item {
+      display: flex;
+      align-items: baseline;
+      gap: 0.6rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #1a1a30;
+      font-size: 0.88rem;
+    }
+    .attr-item:last-child { border-bottom: none; }
+    .attr-label { color: #5a5a7a; flex-shrink: 0; width: 90px; }
+    .attr-value { color: #c0b8b0; }
+    .attr-value a { color: #7090c0; text-decoration: none; }
+    .attr-value a:hover { color: #c9a96e; }
+
+    /* Stats */
+    .stats-card {
+      background: #13132a;
+      border: 1px solid #2a2a45;
+      border-radius: 10px;
+      padding: 1.4rem;
+      display: flex;
+      gap: 1.4rem;
+      align-items: flex-start;
+    }
+
+    .stats-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+      min-width: 110px;
+    }
+    .stats-total {
+      display: flex;
+      align-items: baseline;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+    .stats-total-label {
+      font-size: 0.72rem;
+      color: #6a6a8a;
+      letter-spacing: 0.06em;
+    }
+    .stats-total-num {
+      font-family: "Noto Serif SC", serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #9a8a6a;
+      letter-spacing: 0.05em;
+    }
+    .stats-updated {
+      font-size: 0.72rem;
+      color: #6a6a8a;
+    }
+    .refresh-btn {
+      background: none;
+      border: 1px solid #2a2a45;
+      border-radius: 8px;
+      color: #6a6a8a;
+      font-size: 0.72rem;
+      font-family: inherit;
+      padding: 0.2rem 0.6rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .refresh-btn:hover { border-color: #9a8a6a55; color: #9a8a6a; }
+
+    .stats-divider {
+      width: 1px;
+      background: #1e1e38;
+      align-self: stretch;
+      flex-shrink: 0;
+    }
+
+    .stats-rows { display: flex; flex-direction: column; gap: 0.6rem; flex: 1; }
+    .stats-row {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+    }
+    .stats-row-name {
+      flex: 0 0 70px;
+      font-size: 0.78rem;
+      color: #8a8aaa;
+    }
+    .stats-bar-wrap {
+      flex: 1;
+      height: 3px;
+      background: #1e1e38;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .stats-bar {
+      height: 100%;
+      background: linear-gradient(to right, #c9a96e88, #c9a96e);
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+    .stats-row-count {
+      flex: 0 0 32px;
+      text-align: right;
+      font-size: 0.78rem;
+      color: #6a6a8a;
+    }
+
+    @media (max-width: 420px) {
+      .stats-card { flex-direction: column; }
+      .stats-divider { width: 100%; height: 1px; }
+    }
+
+    @media (max-width: 600px) {
+      .page-title { position: static; transform: none; font-size: 1.1rem; }
+      .main { padding: 2rem 1.2rem 3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="page-title">关于</div>
+  <div class="header-links">
+    <a class="header-link" href="/draw">抽牌 ↗</a>
+    <a class="header-link" href="/">返回检索 ↗</a>
+  </div>
+</header>
+
+<main class="main">
+
+  <section>
+    <div class="section-title">关于本站</div>
+    <div class="section-body">
+      <p>基于韦特塔罗牌的中文检索工具，覆盖全部 78 张牌，支持按牌名、关键词搜索，展示正逆位完整释义与牌面描述。</p>
+      <p>另设抽牌功能，使用澳大利亚国立大学量子随机数生成器（<a href="https://qrng.anu.edu.au" target="_blank" rel="noopener">ANU QRNG</a>）产生真随机数，可一次抽取 1–5 张牌。</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">数据来源</div>
+    <div class="attr-item">
+      <span class="attr-label">牌义释义</span>
+      <span class="attr-value"><a href="https://w.taluo.com" target="_blank" rel="noopener">塔罗网 w.taluo.com</a></span>
+    </div>
+    <div class="attr-item">
+      <span class="attr-label">牌面插图</span>
+      <span class="attr-value"><a href="https://github.com/metabismuth/tarot-json" target="_blank" rel="noopener">metabismuth/tarot-json</a>（Rider-Waite-Smith，CC0）</span>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">工具制作</div>
+    <div class="attr-item">
+      <span class="attr-label">Vibe coding</span>
+      <span class="attr-value"><a href="https://www.anthropic.com/claude" target="_blank" rel="noopener">Claude Sonnet 4.6</a>（<code style="font-size:0.8em;color:#7a7a9a">claude-sonnet-4-6</code>）</span>
+    </div>
+    <div class="attr-item">
+      <span class="attr-label">代码编辑</span>
+      <span class="attr-value">Claude Code / Codex</span>
+    </div>
+    <div class="attr-item">
+      <span class="attr-label">后端</span>
+      <span class="attr-value">Python · Flask · Gunicorn</span>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">访问统计</div>
+    <div class="stats-card" id="statsCard">
+      <div style="color:#3a3a5a;font-size:0.82rem">加载中…</div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  async function loadStats() {
+    const card = document.getElementById('statsCard');
+    try {
+      const res = await fetch('/api/stats');
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      const max = Math.max(...data.pages.map(p => p.count), 1);
+      const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      card.innerHTML = `
+        <div class="stats-left">
+          <div class="stats-total">
+            <span class="stats-total-label">总访问次数</span>
+            <span class="stats-total-num">${data.total.toLocaleString()}</span>
+          </div>
+          <span class="stats-updated">${time} 更新</span>
+          <button class="refresh-btn" onclick="loadStats()">↻ 刷新</button>
+        </div>
+        <div class="stats-divider"></div>
+        <div class="stats-rows">
+          ${data.pages.map(p => `
+            <div class="stats-row">
+              <span class="stats-row-name">${p.name}</span>
+              <div class="stats-bar-wrap">
+                <div class="stats-bar" style="width:${Math.round(p.count/max*100)}%"></div>
+              </div>
+              <span class="stats-row-count">${p.count}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } catch(e) {
+      card.innerHTML = `<div style="color:#5a3a3a;font-size:0.82rem">加载失败</div>`;
+    }
+  }
+  loadStats();
+</script>
+</body>
+</html>

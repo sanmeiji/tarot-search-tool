@@ -271,7 +271,7 @@
     /* ─── Grid ─── */
     .results-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
       gap: 1.2rem;
     }
 
@@ -287,25 +287,29 @@
 
     .card:hover { border-color: #c9a96e; transform: translateY(-3px); }
 
-    .card-body { padding: 1.2rem; }
-
-    .card-header {
+    .card-body {
+      padding: 1rem;
       display: flex;
       align-items: flex-start;
-      gap: 0.9rem;
-      margin-bottom: 0.8rem;
+      gap: 1rem;
     }
 
     .card-thumb {
-      width: 56px;
-      height: 96px;
+      width: 141px;
+      height: 240px;
       object-fit: cover;
       border-radius: 4px;
       flex-shrink: 0;
       background: #1a1a30;
     }
 
-    .card-meta { flex: 1; min-width: 0; }
+    .card-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
 
     .card-name {
       font-size: 1.15rem;
@@ -323,7 +327,7 @@
       font-family: "Noto Serif SC", Georgia, serif;
     }
 
-    .meaning-block { margin-top: 0.55rem; }
+    .meaning-block { margin-top: 0.1rem; }
 
     .meaning-label {
       font-size: 0.7rem;
@@ -890,20 +894,18 @@
     return `
       <div class="card" onclick="openModal(${card.id})">
         <div class="card-body">
-          <div class="card-header">
-            <img class="card-thumb" src="${getImageUrl(card)}" alt="${card.name}" loading="lazy">
-            <div class="card-meta">
-              <div class="card-name">${displayName(card)}</div>
-              <div class="card-name-en">${card.name_en}</div>
+          <img class="card-thumb" src="${getImageUrl(card)}" alt="${card.name}" loading="lazy">
+          <div class="card-info">
+            <div class="card-name">${displayName(card)}</div>
+            <div class="card-name-en">${card.name_en}</div>
+            <div class="meaning-block upright">
+              <div class="meaning-label">正位</div>
+              <div class="meaning-text">${card.keywords_upright || ''}</div>
             </div>
-          </div>
-          <div class="meaning-block upright">
-            <div class="meaning-label">正位</div>
-            <div class="meaning-text">${card.keywords_upright || ''}</div>
-          </div>
-          <div class="meaning-block reversed">
-            <div class="meaning-label">逆位</div>
-            <div class="meaning-text">${card.keywords_reversed || ''}</div>
+            <div class="meaning-block reversed">
+              <div class="meaning-label">逆位</div>
+              <div class="meaning-text">${card.keywords_reversed || ''}</div>
+            </div>
           </div>
         </div>
       </div>`;

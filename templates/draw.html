@@ -87,8 +87,9 @@
       border: 1px solid #2a2a45;
       background: none;
       color: #8a8aaa;
-      font-family: "Noto Serif SC", serif;
+      font-family: "Noto Serif SC", "Source Han Serif CN", serif;
       font-size: 1rem;
+      font-weight: 700;
       cursor: pointer;
       transition: all 0.15s;
     }
@@ -98,6 +99,32 @@
       color: #c9a96e;
       background: #c9a96e12;
     }
+
+    /* ─── Draw row ─── */
+    .draw-row {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .copy-btn {
+      display: none;
+      width: 10rem;
+      padding: 0.75rem 0;
+      white-space: nowrap;
+      text-align: center;
+      background: none;
+      border: 1px solid #3a3a5c;
+      border-radius: 26px;
+      color: #7a7a9a;
+      font-family: "Noto Serif SC", serif;
+      font-size: 1.05rem;
+      letter-spacing: 0.18em;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .copy-btn:hover { border-color: #c9a96e55; color: #c9a96e; }
+    .copy-btn.copied { border-color: #5abf7a55; color: #5abf7a; }
 
     /* ─── Draw button ─── */
     .draw-btn-wrap {
@@ -124,7 +151,7 @@
     .draw-btn {
       position: relative;
       z-index: 1;
-      padding: 0.75rem 3rem;
+      padding: 0.75rem 1.8rem;
       background: #0d0d1a;
       border: none;
       border-radius: 26px;
@@ -135,6 +162,9 @@
       cursor: pointer;
       transition: color 0.2s;
       display: block;
+      width: 10rem;
+      white-space: nowrap;
+      text-align: center;
     }
     .draw-btn:hover { color: #e0c488; }
     .draw-btn:disabled { opacity: 0.5; cursor: default; }
@@ -388,8 +418,17 @@
       }
       .modal-kw-row-label.up { background: #1a2a1a; color: #7a9a7a; }
       .modal-kw-row-label.rev { background: #2a1a1a; color: #9a7a7a; }
-      .cards-area { gap: 1rem; }
       .drawn-img { width: 100px; }
+      .cards-area {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.8rem;
+      }
+      .cards-area.count-2 .drawn-card,
+      .cards-area.count-4 .drawn-card { width: calc(50% - 0.4rem); }
+      .cards-area.count-3 .drawn-card,
+      .cards-area.count-5 .drawn-card { width: calc(33.333% - 0.534rem); }
     }
   </style>
 </head>
@@ -407,16 +446,19 @@
   <div class="count-section">
     <div class="count-label">✦ 请选择抽牌数量 ✦</div>
     <div class="count-btns">
-      <button class="count-btn active" data-n="1">一</button>
-      <button class="count-btn" data-n="2">二</button>
-      <button class="count-btn" data-n="3">三</button>
-      <button class="count-btn" data-n="4">四</button>
-      <button class="count-btn" data-n="5">五</button>
+      <button class="count-btn active" data-n="1">1</button>
+      <button class="count-btn" data-n="2">2</button>
+      <button class="count-btn" data-n="3">3</button>
+      <button class="count-btn" data-n="4">4</button>
+      <button class="count-btn" data-n="5">5</button>
     </div>
   </div>
 
-  <div class="draw-btn-wrap">
-    <button class="draw-btn" id="drawBtn">开始</button>
+  <div class="draw-row">
+    <div class="draw-btn-wrap">
+      <button class="draw-btn" id="drawBtn">开始抽牌</button>
+    </div>
+    <button class="copy-btn" id="copyBtn">复制文字</button>
   </div>
 
   <div class="cards-area" id="cardsArea"></div>
@@ -438,6 +480,8 @@
 </div>
 
 <script>
+  document.getElementById('copyBtn').style.display = 'none';
+
   const IMG_BASE = "/static/images";
 
 const NUM_MAP = {"A":"01","2":"02","3":"03","4":"04","5":"05","6":"06","7":"07","8":"08","9":"09","10":"10","侍从":"11","骑士":"12","皇后":"13","国王":"14"};
@@ -477,15 +521,18 @@ const NUM_MAP = {"A":"01","2":"02","3":"03","4":"04","5":"05","6":"06","7":"07",
     }
   }
 
-  // ─── Restore saved results ───
-  try {
-    const saved = JSON.parse(sessionStorage.getItem('tarot_draw'));
-    if (saved && saved.results && saved.results.length) {
-      lastResults = saved.results;
-      renderCards(saved.results);
-      showNote(saved.qrng);
-    }
-  } catch(e) {}
+  // ─── Restore saved results (skip on deliberate refresh) ───
+  const navType = performance.getEntriesByType('navigation')[0]?.type;
+  if (navType !== 'reload') {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('tarot_draw'));
+      if (saved && saved.results && saved.results.length) {
+        lastResults = saved.results;
+        renderCards(saved.results, false);
+        showNote(saved.qrng);
+      }
+    } catch(e) {}
+  }
 
   // ─── Draw ───
   document.getElementById('drawBtn').addEventListener('click', async () => {
@@ -504,15 +551,18 @@ const NUM_MAP = {"A":"01","2":"02","3":"03","4":"04","5":"05","6":"06","7":"07",
       sessionStorage.setItem('tarot_draw', JSON.stringify({results: data.results, qrng: data.qrng}));
     } finally {
       btn.disabled = false;
-      btn.textContent = '开始';
+      btn.textContent = '开始抽牌';
       btn.closest('.draw-btn-wrap').classList.remove('spinning');
     }
   });
 
   const SEQ = ['', '✦ 1 ✦', '✦ 2 ✦', '✦ 3 ✦', '✦ 4 ✦', '✦ 5 ✦'];
 
-  function renderCards(results) {
-    document.getElementById('cardsArea').innerHTML = results.map((item, i) => `
+  function renderCards(results, showCopy = true) {
+    if (showCopy) document.getElementById('copyBtn').style.display = 'block';
+    const area = document.getElementById('cardsArea');
+    area.className = `cards-area count-${results.length}`;
+    area.innerHTML = results.map((item, i) => `
       <div class="drawn-card" onclick="openModal(${item.card.id}, ${item.reversed})">
         ${results.length > 1 ? `<div class="drawn-seq">${SEQ[i + 1]}</div>` : ''}
         <img class="drawn-img${item.reversed ? ' reversed' : ''}" src="${getImageUrl(item.card)}" alt="${item.card.name}">
@@ -522,6 +572,20 @@ const NUM_MAP = {"A":"01","2":"02","3":"03","4":"04","5":"05","6":"06","7":"07",
       </div>
     `).join('');
   }
+
+  // ─── Copy ───
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    if (!lastResults.length) return;
+    const text = lastResults.map((item, i) =>
+      `${i + 1}. ${item.card.name_en} · ${item.card.name} ${item.reversed ? '逆位' : '正位'}`
+    ).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = '已复制 ✓';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = '复制文字'; btn.classList.remove('copied'); }, 2000);
+    });
+  });
 
   // ─── Modal ───
   function kwTags(str) {

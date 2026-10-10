@@ -1,4 +1,5 @@
 import json
+import hashlib
 import os
 import re
 import sqlite3
@@ -12,6 +13,13 @@ app = Flask(__name__)
 DATA_PATH  = os.path.join(os.path.dirname(__file__), "data", "tarot.json")
 STATS_DB   = os.path.join(os.path.dirname(__file__), "data", "stats.db")
 TRACK_PATHS = {'/', '/draw', '/draw/about', '/about'}
+VIEW_DEDUP_SECONDS = 30 * 60
+BOT_UA_RE = re.compile(
+    r"bot|crawler|spider|slurp|bingpreview|facebookexternalhit|"
+    r"bytespider|petalbot|headless|phantomjs|python-requests|curl/|wget/|"
+    r"go-http-client|apache-httpclient|okhttp|scrapy|httpx|aiohttp|uptime",
+    re.IGNORECASE,
+)
 
 
 def _init_stats():
@@ -25,6 +33,16 @@ def _init_stats():
             ts   INTEGER NOT NULL
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS view_dedup (
+            fingerprint TEXT    NOT NULL,
+            path        TEXT    NOT NULL,
+            bucket      INTEGER NOT NULL,
+            PRIMARY KEY (fingerprint, path, bucket)
+        )
+    """)
+    current_bucket = int(time.time()) // VIEW_DEDUP_SECONDS
+    conn.execute("DELETE FROM view_dedup WHERE bucket < ?", (current_bucket - 48,))
     conn.commit()
     conn.close()
 
@@ -92,14 +110,41 @@ def search_cards(query: str) -> list:
     return results
 
 
+def _is_automated_request() -> bool:
+    """Exclude obvious crawlers, scripts and browser prefetches from analytics."""
+    user_agent = request.headers.get("User-Agent", "").strip()
+    purpose = " ".join(filter(None, (
+        request.headers.get("Purpose"),
+        request.headers.get("Sec-Purpose"),
+    ))).lower()
+    return not user_agent or BOT_UA_RE.search(user_agent) is not None or "prefetch" in purpose
+
+
+def _visitor_fingerprint() -> str:
+    """Create a hashed deduplication key without storing raw client data."""
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    client_ip = forwarded_for.split(",", 1)[0].strip() or request.remote_addr or "unknown"
+    user_agent = request.headers.get("User-Agent", "")
+    value = f"{client_ip}\0{user_agent}".encode("utf-8", errors="replace")
+    return hashlib.sha256(value).hexdigest()
+
+
 @app.before_request
 def track_view():
-    if request.path in TRACK_PATHS and request.method == 'GET':
+    if (request.path in TRACK_PATHS and request.method == 'GET'
+            and not _is_automated_request()):
         try:
+            now = int(time.time())
+            bucket = now // VIEW_DEDUP_SECONDS
             conn = sqlite3.connect(STATS_DB)
             conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("INSERT INTO views (path, date, ts) VALUES (?, ?, ?)",
-                         (request.path, time.strftime('%Y-%m-%d'), int(time.time())))
+            cursor = conn.execute(
+                "INSERT OR IGNORE INTO view_dedup (fingerprint, path, bucket) VALUES (?, ?, ?)",
+                (_visitor_fingerprint(), request.path, bucket),
+            )
+            if cursor.rowcount:
+                conn.execute("INSERT INTO views (path, date, ts) VALUES (?, ?, ?)",
+                             (request.path, time.strftime('%Y-%m-%d'), now))
             conn.commit()
             conn.close()
         except Exception:

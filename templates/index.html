@@ -207,7 +207,9 @@
       background: linear-gradient(to right, transparent, #c9a96e44 50%, transparent);
     }
     .draw-btn {
-      display: block;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       padding: 0.65rem 2.2rem;
       background: none;
       border: 1px solid #c9a96e55;
@@ -221,6 +223,7 @@
       text-decoration: none;
       transition: background 0.15s, border-color 0.15s;
       text-align: center;
+      white-space: nowrap;
     }
     .draw-btn:hover { background: #c9a96e18; border-color: #c9a96e; }
 

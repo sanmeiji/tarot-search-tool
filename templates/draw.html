@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>抽取塔罗牌</title>
+  <title>{% if quantum_mode %}量子抽牌{% else %}抽取塔罗牌{% endif %}</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -63,6 +63,40 @@
       padding: 3rem 2rem;
       gap: 2.5rem;
     }
+
+    .quantum-usage {
+      color: #8a8aaa;
+      font-size: 0.82rem;
+      letter-spacing: 0.04em;
+      text-align: center;
+      min-height: 1.2em;
+    }
+    .quantum-usage strong { color: #c9a96e; font-weight: 600; }
+    .quantum-panel {
+      width: min(680px, 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .quantum-intro {
+      width: 100%;
+      padding: 1rem 1.2rem;
+      border: 1px solid #2a2a45;
+      border-radius: 10px;
+      background: #111122;
+      color: #8a8aaa;
+      font-size: 0.85rem;
+      line-height: 1.75;
+      text-align: center;
+    }
+    .quantum-intro strong { color: #c9a96e; font-weight: 600; }
+    .quantum-intro a {
+      color: #a894c8;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .quantum-intro a:hover { color: #c9a96e; }
 
     /* ─── Count selector ─── */
     .count-section {
@@ -435,14 +469,24 @@
 <body>
 
 <header class="page-header">
-  <div class="page-title">抽取塔罗牌</div>
+  <div class="page-title">{% if quantum_mode %}量子抽牌{% else %}抽取塔罗牌{% endif %}</div>
   <div class="header-links">
-    <a class="header-link" href="/draw/about">关于抽牌方式 ↗</a>
+    {% if not quantum_mode %}<a class="header-link" href="/draw/about">关于抽牌方式 ↗</a>{% endif %}
     <a class="header-link" href="/">返回检索 ↗</a>
   </div>
 </header>
 
 <main class="main">
+  {% if quantum_mode %}
+  <div class="quantum-panel">
+    <div class="quantum-intro">
+      <strong>ANU Quantum Random Numbers</strong><br>
+      随机数来自澳大利亚国立大学对真空量子涨落的测量。系统每次从官方 API 获取 1,024 个 16 位随机数，并缓存尚未使用的数字；服务不可用时会回退至操作系统的加密安全随机数。
+      <a href="https://quantumnumbers.anu.edu.au/" target="_blank" rel="noopener">官方网站 ↗</a>
+    </div>
+    <div class="quantum-usage" id="quantumUsage">正在读取本月用量…</div>
+  </div>
+  {% endif %}
   <div class="count-section">
     <div class="count-label">✦ 请选择抽牌数量 ✦</div>
     <div class="count-btns">
@@ -483,6 +527,9 @@
   document.getElementById('copyBtn').style.display = 'none';
 
   const IMG_BASE = "/static/images";
+  const QUANTUM_MODE = {{ quantum_mode|tojson }};
+  const DRAW_ENDPOINT = QUANTUM_MODE ? '/api/quantum-draw' : '/api/draw';
+  const STORAGE_KEY = QUANTUM_MODE ? 'tarot_quantum_draw' : 'tarot_draw';
 
 const NUM_MAP = {"A":"01","2":"02","3":"03","4":"04","5":"05","6":"06","7":"07","8":"08","9":"09","10":"10","侍从":"11","骑士":"12","皇后":"13","国王":"14"};
   const SUIT_MAP = {"圣杯":"c","权杖":"w","宝剑":"s","星币":"p"};
@@ -512,20 +559,34 @@ const NUM_MAP = {"A":"01","2":"02","3":"03","4":"04","5":"05","6":"06","7":"07",
 
   function showNote(qrng) {
     const note = document.getElementById('sourceNote');
-    if (qrng) {
+    if (QUANTUM_MODE && qrng) {
       note.className = 'source-note qrng';
-      note.innerHTML = `<span class="source-note-line"></span><a href="/draw/about">ANU QRNG</a><span class="source-note-line"></span>`;
+      note.innerHTML = `<span class="source-note-line"></span>ANU QRNG<span class="source-note-line"></span>`;
     } else {
       note.className = 'source-note fallback';
-      note.innerHTML = `<span class="source-note-line"></span>pseudo-RNG<span class="source-note-line"></span>`;
+      note.innerHTML = `<span class="source-note-line"></span>secure RNG<span class="source-note-line"></span>`;
     }
   }
+
+  async function loadQuantumUsage() {
+    if (!QUANTUM_MODE) return;
+    const el = document.getElementById('quantumUsage');
+    try {
+      const res = await fetch('/api/quantum-usage');
+      if (!res.ok) throw new Error('usage request failed');
+      const data = await res.json();
+      el.innerHTML = `${data.month} · ANU API 请求 <strong>${data.used}</strong> / ${data.limit} · 剩余 ${data.remaining}`;
+    } catch (e) {
+      el.textContent = '本月 ANU API 用量读取失败';
+    }
+  }
+  loadQuantumUsage();
 
   // ─── Restore saved results (skip on deliberate refresh) ───
   const navType = performance.getEntriesByType('navigation')[0]?.type;
   if (navType !== 'reload') {
     try {
-      const saved = JSON.parse(sessionStorage.getItem('tarot_draw'));
+      const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY));
       if (saved && saved.results && saved.results.length) {
         lastResults = saved.results;
         renderCards(saved.results, false);
@@ -543,12 +604,13 @@ const NUM_MAP = {"A":"01","2":"02","3":"03","4":"04","5":"05","6":"06","7":"07",
     document.getElementById('cardsArea').innerHTML = '';
     document.getElementById('sourceNote').textContent = '';
     try {
-      const res = await fetch(`/api/draw?n=${selectedN}`);
+      const res = await fetch(`${DRAW_ENDPOINT}?n=${selectedN}`);
       const data = await res.json();
       lastResults = data.results;
       renderCards(data.results);
       showNote(data.qrng);
-      sessionStorage.setItem('tarot_draw', JSON.stringify({results: data.results, qrng: data.qrng}));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({results: data.results, qrng: data.qrng}));
+      await loadQuantumUsage();
     } finally {
       btn.disabled = false;
       btn.textContent = '开始抽牌';

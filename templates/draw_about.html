@@ -159,33 +159,6 @@
     }
     .order-tag em { color: #c9a96e; font-style: normal; margin-right: 0.3rem; }
 
-    /* QRNG link */
-    .qrng-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      margin-top: 0.6rem;
-      padding: 0.45rem 1rem;
-      border: 1px solid #c9a96e44;
-      border-radius: 8px;
-      color: #c9a96e;
-      font-size: 0.85rem;
-      transition: all 0.15s;
-    }
-    .qrng-link:hover { background: #c9a96e12; border-color: #c9a96e; color: #c9a96e; }
-
-    /* Fallback note */
-    .fallback-note {
-      background: #1a1a2a;
-      border-left: 2px solid #3a3a5c;
-      padding: 0.7rem 1rem;
-      border-radius: 0 6px 6px 0;
-      font-size: 0.82rem;
-      color: #6a6a8a;
-      line-height: 1.7;
-      margin-top: 0.8rem;
-    }
-
     @media (max-width: 600px) {
       .page-title { position: static; transform: none; font-size: 1.1rem; }
       .main { padding: 2rem 1.2rem 3rem; }
@@ -205,10 +178,8 @@
 <main class="main">
 
   <section>
-    <div class="section-title">量子随机数来源</div>
-    <p>随机数由澳大利亚国立大学量子光学实验室的 QRNG 提供，通过测量真空量子涨落产生，是目前已知最接近真随机的数字来源之一。</p>
-    <a class="qrng-link" href="https://qrng.anu.edu.au/dice-throw/" target="_blank" rel="noopener">ANU 量子随机数生成器 ↗</a>
-    <div class="fallback-note">使用 QRNG 服务成功抽牌后，结果下方会标注 ANU QRNG。若服务暂时不可用，系统将自动回退至本地伪随机数（Python <code>random</code> 模组），抽牌结果下方会标注 pseudo-RNG。</div>
+    <div class="section-title">随机数来源</div>
+    <p>抽牌使用操作系统提供的加密安全随机数，由 Python <code>secrets</code> 模组调用系统安全熵源生成。它适合需要结果难以预测的抽签、洗牌与安全场景。</p>
   </section>
 
   <section>
@@ -229,7 +200,7 @@
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
-        <div class="step-body">向 <strong>ANU 量子随机数生成器</strong>请求 <strong>两组各 n 个</strong>随机整数（n 为抽牌数），范围 1–78，每组内不重复，两组相互独立。</div>
+        <div class="step-body">使用操作系统的<strong>加密安全随机数生成器</strong>，从编号 1–78 的牌库中进行不重复抽取。</div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
@@ -237,14 +208,14 @@
       </div>
       <div class="step">
         <div class="step-num">3</div>
-        <div class="step-body"><strong>第二组</strong>数字用于判定正逆位：奇数为逆位，偶数为正位。</div>
+        <div class="step-body">为每张牌生成一个独立随机位，用于判定正位或逆位，两种结果概率各半。</div>
       </div>
     </div>
   </section>
 
   <section>
     <div class="section-title">正逆位判定示例</div>
-    <p>假设抽 3 张牌，第二组取得 3 个随机数如下：</p>
+    <p>假设抽 3 张牌，正逆位随机数如下：</p>
     <div class="orient-example">
       <div class="orient-row">
         <span class="orient-num">37</span>
@@ -268,8 +239,7 @@
         <span class="orient-result rev">逆位</span>
       </div>
     </div>
-    <p style="margin-top:0.8rem">正逆位与选牌所用的随机数两组相互独立，互不影响。</p>
-    <div class="fallback-note" style="margin-top:0.8rem">由于每组内部采用不重复抽取，1–78 中奇偶数各半，每抽出一个数后，剩余池的奇偶比例会轻微变化。不过这种变化对抽牌结果的影响极小，即使一次抽取5张牌也可忽略不计。</div>
+    <p style="margin-top:0.8rem">正逆位与选牌分别生成，互不影响。</p>
   </section>
 
 </main>

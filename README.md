@@ -12,7 +12,7 @@ Vibe coded with [Claude Sonnet 4.6](https://www.anthropic.com/claude) (`claude-s
 - **正逆位释义**：展示正位与逆位关键词、详细解释和来源链接
 - **牌面插图**：使用 Rider–Waite–Smith 版本图片
 - **随机抽牌**：支持一次抽取 1–5 张牌，并随机决定正逆位
-- **量子随机数**：优先使用澳大利亚国立大学的 ANU QRNG；请求失败时自动回退到 Python 伪随机数
+- **安全随机抽牌**：公开抽牌使用操作系统的加密安全随机数，不依赖外部随机数服务
 - **抽牌结果保留**：同一浏览器标签页内刷新后仍可恢复上一次结果
 - **访问统计**：使用本地 SQLite 数据库记录主要页面访问；过滤常见爬虫，并对同一访客在 30 分钟内的重复访问去重
 
@@ -73,6 +73,50 @@ python app.py
 ```
 
 启动后访问 <http://localhost:7777>。
+
+### ANU QRNG 配置
+
+受保护的私有入口 `/quantum-draw` 可使用新版 ANU Quantum Numbers API；公开 `/draw` 始终使用本地加密安全随机数。注册取得 API key 后，在启动应用前设置环境变量：
+
+```bash
+export ANU_QRNG_API_KEY="your-api-key"
+```
+
+Windows PowerShell：
+
+```powershell
+$env:ANU_QRNG_API_KEY = "your-api-key"
+```
+
+配置 API key 时，私有入口使用 `https://api.quantumnumbers.anu.edu.au`。应用每次请求 1,024 个随机数并在进程内缓存未使用的数据，以节省 API 请求额度；远程服务不可用时自动回退至操作系统的加密安全随机数。`/api/quantum-usage` 显示本服务当月发出的 ANU API 请求数。
+
+私有页面及其 API 必须在 Nginx 中同时启用 Basic Auth，且 Gunicorn 应只监听本机地址。以 Debian/Ubuntu 为例：
+
+```bash
+sudo apt install apache2-utils
+sudo htpasswd -c /etc/nginx/.htpasswd-tarot-quantum your-user
+```
+
+在站点的 `server` 块中，将以下规则放在公开的 `location /` 规则之前：
+
+```nginx
+location ~ ^/(quantum-draw|api/quantum-(draw|usage))$ {
+    auth_basic "Private quantum draw";
+    auth_basic_user_file /etc/nginx/.htpasswd-tarot-quantum;
+
+    include proxy_params;
+    proxy_pass http://127.0.0.1:7777;
+}
+```
+
+检查并重新加载配置：
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+“隐藏入口”本身不构成访问控制。不要把 Gunicorn 的端口直接暴露到公网，否则访问者可以绕过 Nginx 密码直接请求私有 API。
 
 ## 生产环境运行
 

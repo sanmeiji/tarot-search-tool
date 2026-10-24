@@ -107,6 +107,24 @@
       white-space: nowrap;
     }
     .quantum-intro a:hover { color: #c9a96e; }
+    .quantum-details {
+      margin-top: 0.7rem;
+      padding-top: 0.65rem;
+      border-top: 1px solid #24243c;
+      text-align: left;
+    }
+    .quantum-details summary {
+      color: #a894c8;
+      cursor: pointer;
+      text-align: center;
+      user-select: none;
+    }
+    .quantum-details p { margin-top: 0.65rem; }
+    .quantum-details code {
+      color: #c9a96e;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 0.92em;
+    }
 
     /* ─── Count selector ─── */
     .count-section {
@@ -493,6 +511,11 @@
       <strong>ANU Quantum Random Numbers</strong><br>
       随机数来自澳大利亚国立大学对真空量子涨落的测量。系统为当前浏览器会话获取 {{ quantum_pool_size }} 个 16 位随机数，并缓存尚未使用的数字；会话空闲 {{ quantum_session_minutes }} 分钟后自动过期，服务不可用时回退至操作系统的加密安全随机数。
       <a href="https://quantumnumbers.anu.edu.au/" target="_blank" rel="noopener">官方网站 ↗</a>
+      <details class="quantum-details">
+        <summary>如何公平映射到 78 张牌？</summary>
+        <p>ANU 返回均匀分布的 16 位整数，即 <code>0–65535</code>。由于 65,536 不能被 78 整除，直接取模会让前 16 个牌号获得极微小的概率优势。</p>
+        <p>系统只接受 <code>0–65519</code>，丢弃末尾的 16 个值，再计算 <code>value % 78 + 1</code>。因为 <code>65520 = 78 × 840</code>，每张牌恰好对应 840 个原始值。映射到已抽出的牌时也会跳过，从而得到均匀的不放回抽样。</p>
+      </details>
     </div>
     <div class="quantum-usage" id="quantumUsage">正在读取本月用量…</div>
   </div>

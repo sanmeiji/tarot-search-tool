@@ -59,6 +59,15 @@
       text-shadow: 0 0 20px rgba(201,169,110,0.35);
       line-height: 1.3;
       text-align: center;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    .secret-title-hint {
+      animation: secret-title-glow 0.38s ease-out;
+    }
+    @keyframes secret-title-glow {
+      50% { color: #efd28f; text-shadow: 0 0 18px rgba(239,210,143,0.8); }
     }
 
     /* Search */
@@ -641,6 +650,8 @@
         letter-spacing: 0.1em;
         white-space: nowrap;
         flex-shrink: 0;
+        user-select: none;
+        touch-action: manipulation;
       }
 
       .mobile-filters {
@@ -864,6 +875,32 @@
   const IMG_BASE = "/static/images";
   const NUM_MAP = {"A":"01","2":"02","3":"03","4":"04","5":"05","6":"06","7":"07","8":"08","9":"09","10":"10","侍从":"11","骑士":"12","皇后":"13","国王":"14"};
   const SUIT_MAP = {"圣杯":"c","权杖":"w","宝剑":"s","星币":"p"};
+
+  // Secret quantum draw entrance. Nginx still enforces authentication.
+  let secretTitleClicks = 0;
+  let secretTitleTimer = null;
+  document.querySelectorAll('.sidebar-title, .mobile-title').forEach(title => {
+    title.addEventListener('click', () => {
+      secretTitleClicks += 1;
+      clearTimeout(secretTitleTimer);
+
+      if (secretTitleClicks === 2) {
+        title.classList.remove('secret-title-hint');
+        void title.offsetWidth;
+        title.classList.add('secret-title-hint');
+      }
+      if (secretTitleClicks >= 3) {
+        window.location.assign('/quantum-draw');
+        return;
+      }
+
+      secretTitleTimer = setTimeout(() => {
+        secretTitleClicks = 0;
+        document.querySelectorAll('.secret-title-hint')
+          .forEach(el => el.classList.remove('secret-title-hint'));
+      }, 2000);
+    });
+  });
 
   // ─── Sidebar toggle & position ───
   const sidebar   = document.getElementById('sidebar');

@@ -88,7 +88,14 @@ Windows PowerShell：
 $env:ANU_QRNG_API_KEY = "your-api-key"
 ```
 
-配置 API key 时，私有入口使用 `https://api.quantumnumbers.anu.edu.au`。应用每次请求 1,024 个随机数并在进程内缓存未使用的数据，以节省 API 请求额度；远程服务不可用时自动回退至操作系统的加密安全随机数。`/api/quantum-usage` 显示本服务当月发出的 ANU API 请求数。
+配置 API key 时，私有入口使用 `https://api.quantumnumbers.anu.edu.au`。每个浏览器会话默认获取 64 个随机数，未使用的数据保存在服务端 SQLite 中；会话使用 HttpOnly cookie 关联，空闲 30 分钟后过期，也可在页面中立即清除。远程服务不可用时自动回退至操作系统的加密安全随机数。`/api/quantum-usage` 显示本服务当月发出的 ANU API 请求数与当前会话池余量。
+
+批量大小和空闲过期时间可以通过环境变量调整：
+
+```ini
+Environment="QUANTUM_POOL_SIZE=64"
+Environment="QUANTUM_SESSION_TTL=1800"
+```
 
 私有页面及其 API 必须在 Nginx 中同时启用 Basic Auth，且 Gunicorn 应只监听本机地址。以 Debian/Ubuntu 为例：
 
@@ -100,7 +107,7 @@ sudo htpasswd -c /etc/nginx/.htpasswd-tarot-quantum your-user
 在站点的 `server` 块中，将以下规则放在公开的 `location /` 规则之前：
 
 ```nginx
-location ~ ^/(quantum-draw|api/quantum-(draw|usage))$ {
+location ~ ^/(quantum-draw|api/quantum-(draw|usage|session))$ {
     auth_basic "Private quantum draw";
     auth_basic_user_file /etc/nginx/.htpasswd-tarot-quantum;
 

@@ -72,6 +72,16 @@
       min-height: 1.2em;
     }
     .quantum-usage strong { color: #c9a96e; font-weight: 600; }
+    .quantum-clear {
+      border: 0;
+      background: none;
+      color: #666680;
+      font: inherit;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 0.2em;
+    }
+    .quantum-clear:hover { color: #c9a96e; }
     .quantum-panel {
       width: min(680px, 100%);
       display: flex;
@@ -481,7 +491,7 @@
   <div class="quantum-panel">
     <div class="quantum-intro">
       <strong>ANU Quantum Random Numbers</strong><br>
-      随机数来自澳大利亚国立大学对真空量子涨落的测量。系统每次从官方 API 获取 1,024 个 16 位随机数，并缓存尚未使用的数字；服务不可用时会回退至操作系统的加密安全随机数。
+      随机数来自澳大利亚国立大学对真空量子涨落的测量。系统为当前浏览器会话获取 {{ quantum_pool_size }} 个 16 位随机数，并缓存尚未使用的数字；会话空闲 {{ quantum_session_minutes }} 分钟后自动过期，服务不可用时回退至操作系统的加密安全随机数。
       <a href="https://quantumnumbers.anu.edu.au/" target="_blank" rel="noopener">官方网站 ↗</a>
     </div>
     <div class="quantum-usage" id="quantumUsage">正在读取本月用量…</div>
@@ -575,10 +585,21 @@ const NUM_MAP = {"A":"01","2":"02","3":"03","4":"04","5":"05","6":"06","7":"07",
       const res = await fetch('/api/quantum-usage');
       if (!res.ok) throw new Error('usage request failed');
       const data = await res.json();
-      el.innerHTML = `${data.month} · ANU API 请求 <strong>${data.used}</strong> / ${data.limit} · 剩余 ${data.remaining}`;
+      el.innerHTML = `${data.month} · ANU API 请求 <strong>${data.used}</strong> / ${data.limit} · 配额剩余 ${data.remaining} · 会话池 ${data.pool_remaining} 个 · <button class="quantum-clear" id="clearQuantumSession">清除会话</button>`;
+      document.getElementById('clearQuantumSession').addEventListener('click', clearQuantumSession);
     } catch (e) {
       el.textContent = '本月 ANU API 用量读取失败';
     }
+  }
+
+  async function clearQuantumSession() {
+    const res = await fetch('/api/quantum-session', {method: 'DELETE'});
+    if (!res.ok) return;
+    sessionStorage.removeItem(STORAGE_KEY);
+    lastResults = [];
+    document.getElementById('cardsArea').innerHTML = '';
+    document.getElementById('sourceNote').textContent = '';
+    await loadQuantumUsage();
   }
   loadQuantumUsage();
 

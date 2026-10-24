@@ -48,6 +48,13 @@ def _init_stats():
             requests INTEGER NOT NULL DEFAULT 0
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS quantum_sessions (
+            token_hash TEXT PRIMARY KEY,
+            pool_json  TEXT    NOT NULL,
+            updated_at INTEGER NOT NULL
+        )
+    """)
     current_bucket = int(time.time()) // VIEW_DEDUP_SECONDS
     conn.execute("DELETE FROM view_dedup WHERE bucket < ?", (current_bucket - 48,))
     conn.commit()
@@ -73,7 +80,10 @@ ANU_QRNG_URL = os.environ.get("ANU_QRNG_URL", "").strip() or (
     if ANU_QRNG_API_KEY
     else "https://qrng.anu.edu.au/API/jsonI.php"
 )
-_qrng_state = {"retry_after": 0, "pool": []}
+QUANTUM_POOL_SIZE = max(16, min(int(os.environ.get("QUANTUM_POOL_SIZE", "64")), 1024))
+QUANTUM_SESSION_TTL = max(300, int(os.environ.get("QUANTUM_SESSION_TTL", "1800")))
+QUANTUM_COOKIE = "tarot_quantum_session"
+_qrng_state = {"retry_after": 0}
 _qrng_lock = threading.Lock()
 
 
@@ -118,6 +128,67 @@ def _record_qrng_request():
                ON CONFLICT(month) DO UPDATE SET requests = requests + 1""",
             (month,),
         )
+
+
+def _session_token_hash(token):
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _load_quantum_pool(token):
+    now = int(time.time())
+    token_hash = _session_token_hash(token)
+    with sqlite3.connect(STATS_DB) as conn:
+        conn.execute(
+            "DELETE FROM quantum_sessions WHERE updated_at < ?",
+            (now - QUANTUM_SESSION_TTL,),
+        )
+        row = conn.execute(
+            "SELECT pool_json FROM quantum_sessions WHERE token_hash = ?",
+            (token_hash,),
+        ).fetchone()
+    if not row:
+        return []
+    try:
+        pool = json.loads(row[0])
+        return [value for value in pool if isinstance(value, int)]
+    except (TypeError, ValueError):
+        return []
+
+
+def _save_quantum_pool(token, pool):
+    with sqlite3.connect(STATS_DB) as conn:
+        conn.execute(
+            """INSERT INTO quantum_sessions (token_hash, pool_json, updated_at)
+               VALUES (?, ?, ?)
+               ON CONFLICT(token_hash) DO UPDATE SET
+                   pool_json = excluded.pool_json,
+                   updated_at = excluded.updated_at""",
+            (_session_token_hash(token), json.dumps(pool), int(time.time())),
+        )
+
+
+def _clear_quantum_pool(token):
+    with sqlite3.connect(STATS_DB) as conn:
+        conn.execute(
+            "DELETE FROM quantum_sessions WHERE token_hash = ?",
+            (_session_token_hash(token),),
+        )
+
+
+def _take_quantum_values(pool, n):
+    """Consume unique card numbers plus independent orientation values."""
+    card_nums = []
+    consumed = 0
+    for consumed, value in enumerate(pool, start=1):
+        card_num = value % 78 + 1
+        if card_num not in card_nums:
+            card_nums.append(card_num)
+            if len(card_nums) == n:
+                break
+    orient_values = pool[consumed:consumed + n]
+    if len(card_nums) != n or len(orient_values) != n:
+        return None
+    return card_nums, orient_values, pool[consumed + n:]
 
 
 def _is_automated_request() -> bool:
@@ -178,49 +249,35 @@ def all_cards():
     return jsonify(CARDS)
 
 
-def _qrng_draw(n):
+def _qrng_draw(n, session_token):
     """Draw cards with ANU uint16 data, falling back to the OS CSPRNG."""
+    pool = _load_quantum_pool(session_token)
     try:
-        if time.time() < _qrng_state["retry_after"]:
-            raise RuntimeError("ANU QRNG is in cooldown")
-
-        # Fetch the maximum batch and consume it across draws. This makes the
-        # 100-request free tier practical instead of spending one request per
-        # visitor action. The pool is process-local and contains unused values.
-        if len(_qrng_state["pool"]) < 64:
+        drawn = _take_quantum_values(pool, n)
+        if drawn is None:
+            if time.time() < _qrng_state["retry_after"]:
+                raise RuntimeError("ANU QRNG is in cooldown")
             r = requests.get(
                 ANU_QRNG_URL,
-                params={"length": 1024, "type": "uint16"},
+                params={"length": QUANTUM_POOL_SIZE, "type": "uint16"},
                 headers={"x-api-key": ANU_QRNG_API_KEY} if ANU_QRNG_API_KEY else None,
                 timeout=5,
             )
             r.raise_for_status()
             payload = r.json()
             values = payload.get("data", [])
-            if payload.get("success") is not True or len(values) != 1024:
+            if payload.get("success") is not True or len(values) != QUANTUM_POOL_SIZE:
                 raise ValueError("Invalid ANU QRNG response")
             _record_qrng_request()
-            _qrng_state["pool"].extend(
+            pool.extend(
                 value for value in values
                 if isinstance(value, int) and 0 <= value < 65520
             )
-
-        # 65520 is the largest multiple of 78 below 2**16. Discarding the
-        # remaining 16 values prevents modulo bias when mapping to 78 cards.
-        usable = _qrng_state["pool"]
-        card_nums = []
-        consumed = 0
-        for consumed, value in enumerate(usable, start=1):
-            card_num = value % 78 + 1
-            if card_num not in card_nums:
-                card_nums.append(card_num)
-                if len(card_nums) == n:
-                    break
-        orient_values = usable[consumed:consumed + n]
-        if len(card_nums) != n or len(orient_values) != n:
+            drawn = _take_quantum_values(pool, n)
+        if drawn is None:
             raise ValueError("Not enough usable ANU QRNG values")
-
-        del usable[:consumed + n]
+        card_nums, orient_values, remaining = drawn
+        _save_quantum_pool(session_token, remaining)
         _qrng_state["retry_after"] = 0
         return card_nums, orient_values, True
     except Exception:
@@ -230,10 +287,10 @@ def _qrng_draw(n):
         return pool, orients, False
 
 
-def qrng_draw(n):
-    # Protect the shared entropy pool when Gunicorn uses threaded workers.
+def qrng_draw(n, session_token):
+    # Protect a session pool when Gunicorn uses threaded workers.
     with _qrng_lock:
-        return _qrng_draw(n)
+        return _qrng_draw(n, session_token)
 
 
 @app.route("/api/draw")
@@ -250,12 +307,18 @@ def draw_card():
 @app.route("/api/quantum-draw")
 def quantum_draw_card():
     n = min(max(request.args.get("n", 1, type=int) or 1, 1), 5)
-    card_nums, orient_nums, used_qrng = qrng_draw(n)
+    session_token = request.cookies.get(QUANTUM_COOKIE) or secrets.token_urlsafe(32)
+    card_nums, orient_nums, used_qrng = qrng_draw(n, session_token)
     results = []
     for card_num, orient_num in zip(card_nums, orient_nums):
         card = DRAW_ORDER[card_num - 1]
         results.append({"card": card, "reversed": orient_num % 2 == 1})
-    return jsonify({"results": results, "qrng": used_qrng})
+    response = jsonify({"results": results, "qrng": used_qrng})
+    response.set_cookie(
+        QUANTUM_COOKIE, session_token, secure=True, httponly=True,
+        samesite="Strict", path="/",
+    )
+    return response
 
 
 @app.route("/api/quantum-usage")
@@ -266,8 +329,22 @@ def quantum_usage():
             "SELECT requests FROM qrng_usage WHERE month = ?", (month,)
         ).fetchone()
     used = row[0] if row else 0
+    token = request.cookies.get(QUANTUM_COOKIE)
+    pool_remaining = len(_load_quantum_pool(token)) if token else 0
     return jsonify({"month": month, "used": used, "limit": 100,
-                    "remaining": max(100 - used, 0)})
+                    "remaining": max(100 - used, 0),
+                    "pool_remaining": pool_remaining,
+                    "session_ttl_minutes": QUANTUM_SESSION_TTL // 60})
+
+
+@app.route("/api/quantum-session", methods=["DELETE"])
+def clear_quantum_session():
+    token = request.cookies.get(QUANTUM_COOKIE)
+    if token:
+        _clear_quantum_pool(token)
+    response = jsonify({"cleared": True})
+    response.delete_cookie(QUANTUM_COOKIE, path="/", secure=True, samesite="Strict")
+    return response
 
 
 @app.route("/draw")
@@ -277,7 +354,11 @@ def draw_page():
 
 @app.route("/quantum-draw")
 def quantum_draw_page():
-    return render_template("draw.html", quantum_mode=True)
+    return render_template(
+        "draw.html", quantum_mode=True,
+        quantum_pool_size=QUANTUM_POOL_SIZE,
+        quantum_session_minutes=QUANTUM_SESSION_TTL // 60,
+    )
 
 
 @app.route("/draw/about")
